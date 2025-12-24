@@ -13,10 +13,10 @@ linters:
 
 linters-settings:
   govet:
-    check-shadowing: true
     enable-all: true
 
 run:
+  go: "1.25"
   timeout: 5m
   issues-exit-code: 1
   tests: true
