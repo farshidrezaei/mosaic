@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	mediapack "github.com/farshidrezaei/mosaic"
+	"github.com/farshidrezaei/mosaic"
 )
 
 func main() {
@@ -21,16 +21,16 @@ func main() {
 	}
 
 	// 2. Create the job
-	job := mediapack.Job{
+	job := mosaic.Job{
 		Input:     inputPath,
 		OutputDir: outputDir,
-		Profile:   mediapack.ProfileVOD, // Use ProfileLive for lower latency
+		Profile:   mosaic.ProfileVOD, // Use ProfileLive for lower latency
 	}
 
 	log.Printf("Starting HLS encoding for %s...", inputPath)
 
 	// 3. Run the encoding
-	if err := mediapack.EncodeHls(context.Background(), job); err != nil {
+	if err := mosaic.EncodeHls(context.Background(), job); err != nil {
 		log.Fatalf("Encoding failed: %v", err)
 	}
 

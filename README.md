@@ -47,13 +47,13 @@ import (
 )
 
 func main() {
-	job := mediapack.Job{
+	job := mosaic.Job{
 		Input:     "/path/to/input.mp4", // or a url
 		OutputDir: "/output/hls",
-		Profile:   mediapack.ProfileVOD,
+		Profile:   mosaic.ProfileVOD,
 	}
 
-	if err := mediapack.EncodeHls(context.Background(), job); err != nil {
+	if err := mosaic.EncodeHls(context.Background(), job); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -75,13 +75,13 @@ func main() {
 ### DASH Encoding
 
 ```go
-job := mediapack.Job{
+job := mosaic.Job{
 Input:     "/path/to/input.mp4", // or a url
 OutputDir: "/output/dash",
-Profile:   mediapack.ProfileLive,
+Profile:   mosaic.ProfileLive,
 }
 
-if err := mediapack.EncodeDash(context.Background(), job); err != nil {
+if err := mosaic.EncodeDash(context.Background(), job); err != nil {
 log.Fatal(err)
 }
 ```
@@ -233,8 +233,14 @@ ProfileLive Profile = "live" // 2-second segments
 // Encode to HLS with CMAF segments
 func EncodeHls(ctx context.Context, job Job) error
 
+// Encode to HLS with a custom command executor
+func EncodeHlsWithExecutor(ctx context.Context, job Job, exec executor.CommandExecutor) error
+
 // Encode to DASH with CMAF segments
 func EncodeDash(ctx context.Context, job Job) error
+
+// Encode to DASH with a custom command executor
+func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandExecutor) error
 ```
 
 ## 🤝 Contributing

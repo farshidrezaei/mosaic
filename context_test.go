@@ -1,4 +1,4 @@
-package mediapack
+package mosaic
 
 import (
 	"context"

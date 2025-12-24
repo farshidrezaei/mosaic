@@ -1,4 +1,4 @@
-package mediapack
+package mosaic
 
 // Profile represents an encoding profile (e.g., VOD or Live).
 type Profile string
