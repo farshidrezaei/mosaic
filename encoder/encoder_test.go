@@ -14,9 +14,9 @@ import (
 func TestEncodeHLSCMAFWithExecutor(t *testing.T) {
 	tests := []struct {
 		name    string
+		ladder  []ladder.Rendition
 		info    probe.VideoInfo
 		profile config.Profile
-		ladder  []ladder.Rendition
 		wantErr bool
 	}{
 		{
@@ -95,9 +95,9 @@ func TestEncodeHLSCMAFWithExecutor(t *testing.T) {
 func TestEncodeDASHCMAFWithExecutor(t *testing.T) {
 	tests := []struct {
 		name    string
+		ladder  []ladder.Rendition
 		info    probe.VideoInfo
 		profile config.Profile
-		ladder  []ladder.Rendition
 		wantErr bool
 	}{
 		{

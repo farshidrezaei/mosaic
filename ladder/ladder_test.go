@@ -9,8 +9,8 @@ import (
 func TestBuild(t *testing.T) {
 	tests := []struct {
 		name     string
-		info     probe.VideoInfo
 		expected []Rendition
+		info     probe.VideoInfo
 	}{
 		{
 			name: "1080p source - all renditions",
@@ -20,9 +20,9 @@ func TestBuild(t *testing.T) {
 				FPS:    30.0,
 			},
 			expected: []Rendition{
-				{1920, 1080, 5200, 10400, "main", "4.0"},
-				{1280, 720, 3000, 6000, "main", "3.1"},
-				{640, 360, 1000, 2000, "baseline", "3.0"},
+				{Width: 1920, Height: 1080, MaxRate: 5200, BufSize: 10400, Profile: "main", Level: "4.0"},
+				{Width: 1280, Height: 720, MaxRate: 3000, BufSize: 6000, Profile: "main", Level: "3.1"},
+				{Width: 640, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
 			},
 		},
 		{
@@ -33,9 +33,9 @@ func TestBuild(t *testing.T) {
 				FPS:    60.0,
 			},
 			expected: []Rendition{
-				{1920, 1080, 5200, 10400, "main", "4.0"},
-				{1280, 720, 3000, 6000, "main", "3.1"},
-				{640, 360, 1000, 2000, "baseline", "3.0"},
+				{Width: 1920, Height: 1080, MaxRate: 5200, BufSize: 10400, Profile: "main", Level: "4.0"},
+				{Width: 1280, Height: 720, MaxRate: 3000, BufSize: 6000, Profile: "main", Level: "3.1"},
+				{Width: 640, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
 			},
 		},
 		{
@@ -46,8 +46,8 @@ func TestBuild(t *testing.T) {
 				FPS:    25.0,
 			},
 			expected: []Rendition{
-				{1280, 720, 3000, 6000, "main", "3.1"},
-				{640, 360, 1000, 2000, "baseline", "3.0"},
+				{Width: 1280, Height: 720, MaxRate: 3000, BufSize: 6000, Profile: "main", Level: "3.1"},
+				{Width: 640, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
 			},
 		},
 		{
@@ -58,7 +58,7 @@ func TestBuild(t *testing.T) {
 				FPS:    30.0,
 			},
 			expected: []Rendition{
-				{640, 360, 1000, 2000, "baseline", "3.0"},
+				{Width: 640, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
 			},
 		},
 		{
@@ -78,7 +78,7 @@ func TestBuild(t *testing.T) {
 				FPS:    30.0,
 			},
 			expected: []Rendition{
-				{640, 360, 1000, 2000, "baseline", "3.0"},
+				{Width: 640, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
 			},
 		},
 	}

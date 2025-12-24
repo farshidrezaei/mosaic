@@ -68,9 +68,9 @@ func TestMockExecutorGetCallCount(t *testing.T) {
 	mock.Responses["cmd"] = MockResponse{Output: []byte("ok"), Err: nil}
 	mock.Responses["other"] = MockResponse{Output: []byte("ok"), Err: nil}
 
-	mock.Execute(context.Background(), "cmd")
-	mock.Execute(context.Background(), "cmd")
-	mock.Execute(context.Background(), "other")
+	_, _ = mock.Execute(context.Background(), "cmd")
+	_, _ = mock.Execute(context.Background(), "cmd")
+	_, _ = mock.Execute(context.Background(), "other")
 
 	count := mock.GetCallCount("cmd")
 	if count != 2 {
@@ -86,7 +86,7 @@ func TestMockExecutorGetCallCount(t *testing.T) {
 func TestMockExecutorReset(t *testing.T) {
 	mock := NewMockExecutor()
 	mock.Responses["cmd"] = MockResponse{Output: []byte("ok"), Err: nil}
-	mock.Execute(context.Background(), "cmd")
+	_, _ = mock.Execute(context.Background(), "cmd")
 
 	if len(mock.CallLog) == 0 {
 		t.Error("expected calllog to have entries")

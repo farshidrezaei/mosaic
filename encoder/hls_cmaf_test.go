@@ -9,8 +9,8 @@ import (
 func TestBuildFilterGraph(t *testing.T) {
 	tests := []struct {
 		name       string
-		renditions []ladder.Rendition
 		expected   string
+		renditions []ladder.Rendition
 	}{
 		{
 			name: "single rendition",

@@ -11,8 +11,8 @@ import (
 
 func TestInputWithExecutor(t *testing.T) {
 	tests := []struct {
-		name      string
 		responses map[string]executor.MockResponse
+		name      string
 		wantInfo  VideoInfo
 		wantErr   bool
 	}{

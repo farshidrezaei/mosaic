@@ -11,9 +11,9 @@ import (
 
 func TestInitializeWithExecutor(t *testing.T) {
 	tests := []struct {
-		name      string
-		job       Job
 		responses map[string]executor.MockResponse
+		job       Job
+		name      string
 		wantErr   bool
 	}{
 		{
@@ -203,7 +203,6 @@ type sequentialMock struct {
 	audioResponse  executor.MockResponse
 	ffmpegResponse executor.MockResponse
 	callCount      int
-	responses      []executor.MockResponse // Added to make the provided snippet compile
 }
 
 func (m *sequentialMock) Execute(ctx context.Context, name string, args ...string) ([]byte, error) {

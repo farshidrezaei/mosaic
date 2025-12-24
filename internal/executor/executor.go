@@ -42,9 +42,9 @@ func (r *RealCommandExecutor) Execute(ctx context.Context, name string, args ...
 // CommandError wraps command execution errors with additional context.
 type CommandError struct {
 	Command string
-	Args    []string
-	Err     error
 	Stderr  string
+	Err     error
+	Args    []string
 }
 
 func (e *CommandError) Error() string {

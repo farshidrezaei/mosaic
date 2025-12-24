@@ -45,13 +45,14 @@ func InputWithExecutor(ctx context.Context, input string, exec executor.CommandE
 
 	var data struct {
 		Streams []struct {
+			FPS    string `json:"avg_frame_rate"`
 			Width  int    `json:"width"`
 			Height int    `json:"height"`
-			FPS    string `json:"avg_frame_rate"`
 		} `json:"streams"`
 	}
 
-	if err := json.Unmarshal(out, &data); err != nil {
+	err = json.Unmarshal(out, &data)
+	if err != nil {
 		return VideoInfo{}, err
 	}
 	if len(data.Streams) == 0 {

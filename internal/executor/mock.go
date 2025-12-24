@@ -15,8 +15,8 @@ type MockCommandExecutor struct {
 
 // MockResponse defines a mock response for a command.
 type MockResponse struct {
-	Output []byte
 	Err    error
+	Output []byte
 }
 
 // MockCall records a command execution.

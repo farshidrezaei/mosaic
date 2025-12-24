@@ -32,16 +32,46 @@ func TestCalcGOP(t *testing.T) {
 func TestBuildVarStreamMap(t *testing.T) {
 	tests := []struct {
 		name     string
+		expected string
 		variants int
 		hasAudio bool
-		expected string
 	}{
-		{"1 variant with audio", 1, true, "v:0,a:0"},
-		{"1 variant no audio", 1, false, "v:0"},
-		{"3 variants with audio", 3, true, "v:0,a:0 v:1,a:1 v:2,a:2"},
-		{"3 variants no audio", 3, false, "v:0 v:1 v:2"},
-		{"2 variants with audio", 2, true, "v:0,a:0 v:1,a:1"},
-		{"2 variants no audio", 2, false, "v:0 v:1"},
+		{
+			name:     "1 variant with audio",
+			variants: 1,
+			hasAudio: true,
+			expected: "v:0,a:0",
+		},
+		{
+			name:     "1 variant no audio",
+			variants: 1,
+			hasAudio: false,
+			expected: "v:0",
+		},
+		{
+			name:     "3 variants with audio",
+			variants: 3,
+			hasAudio: true,
+			expected: "v:0,a:0 v:1,a:1 v:2,a:2",
+		},
+		{
+			name:     "3 variants no audio",
+			variants: 3,
+			hasAudio: false,
+			expected: "v:0 v:1 v:2",
+		},
+		{
+			name:     "2 variants with audio",
+			variants: 2,
+			hasAudio: true,
+			expected: "v:0,a:0 v:1,a:1",
+		},
+		{
+			name:     "2 variants no audio",
+			variants: 2,
+			hasAudio: false,
+			expected: "v:0 v:1",
+		},
 	}
 
 	for _, tt := range tests {
