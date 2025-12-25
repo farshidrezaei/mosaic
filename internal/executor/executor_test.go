@@ -139,3 +139,120 @@ func TestCommandErrorUnwrap(t *testing.T) {
 		t.Error("Unwrap did not return original error")
 	}
 }
+func TestMockExecutorExecuteWithProgress(t *testing.T) {
+	mock := &MockCommandExecutor{Responses: make(map[string]MockResponse)} // CallLog is nil
+	mock.Responses["test"] = MockResponse{Output: []byte("ok"), Err: nil}
+
+	progress := make(chan string, 1)
+	output, err := mock.ExecuteWithProgress(context.Background(), progress, "test")
+
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if string(output) != "ok" {
+		t.Errorf("expected 'ok', got '%s'", string(output))
+	}
+
+	// Mock closes the channel immediately
+	_, ok := <-progress
+	if ok {
+		t.Error("expected progress channel to be closed")
+	}
+
+	// Test with progress == nil to cover that branch
+	output, err = mock.ExecuteWithProgress(context.Background(), nil, "test")
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if string(output) != "ok" {
+		t.Errorf("expected 'ok', got '%s'", string(output))
+	}
+
+	// Test with unconfigured command
+	_, err = mock.ExecuteWithProgress(context.Background(), nil, "unknown")
+	if err == nil {
+		t.Error("expected error for unconfigured command")
+	}
+
+	// Test with nil Responses
+	mock.Responses = nil
+	_, err = mock.ExecuteWithProgress(context.Background(), nil, "test")
+	if err == nil {
+		t.Error("expected error for nil Responses")
+	}
+}
+
+func TestRealCommandExecutorExecute(t *testing.T) {
+	exec := &RealCommandExecutor{}
+	output, err := exec.Execute(context.Background(), "echo", "hello")
+	if err != nil {
+		t.Fatalf("Execute failed: %v", err)
+	}
+	if string(output) != "hello\n" {
+		t.Errorf("expected 'hello\\n', got '%s'", string(output))
+	}
+}
+
+func TestRealCommandExecutorExecuteWithProgress(t *testing.T) {
+	exec := &RealCommandExecutor{}
+	progress := make(chan string, 10)
+
+	// Use a command that prints multiple lines
+	output, err := exec.ExecuteWithProgress(context.Background(), progress, "echo", "-e", "line1\nline2")
+	if err != nil {
+		t.Fatalf("ExecuteWithProgress failed: %v", err)
+	}
+
+	if string(output) != "line1\nline2\n" {
+		t.Errorf("expected 'line1\\nline2\\n', got '%s'", string(output))
+	}
+
+	var totalOutput string
+	for line := range progress {
+		totalOutput += line
+	}
+	if totalOutput != "line1\nline2\n" {
+		t.Errorf("expected 'line1\\nline2\\n', got '%s'", totalOutput)
+	}
+}
+
+func TestRealCommandExecutorStartError(t *testing.T) {
+	exec := &RealCommandExecutor{}
+	_, err := exec.ExecuteWithProgress(context.Background(), make(chan string), "")
+	if err == nil {
+		t.Error("expected error for empty command")
+	}
+}
+
+func TestRealCommandExecutorError(t *testing.T) {
+	exec := &RealCommandExecutor{}
+	_, err := exec.Execute(context.Background(), "false")
+	if err == nil {
+		t.Error("expected error for 'false' command")
+	}
+}
+
+func TestRealCommandExecutorExecuteWithProgressError(t *testing.T) {
+	exec := &RealCommandExecutor{}
+	progress := make(chan string, 10)
+	_, err := exec.ExecuteWithProgress(context.Background(), progress, "false")
+	if err == nil {
+		t.Error("expected error for 'false' command")
+	}
+}
+func TestRealCommandExecutorStderrError(t *testing.T) {
+	exec := &RealCommandExecutor{}
+	// 'ls nonexistent' prints to stderr and returns exit code 2
+	_, err := exec.Execute(context.Background(), "ls", "nonexistent_file_12345")
+	if err == nil {
+		t.Error("expected error for nonexistent file")
+	}
+	var cmdErr *CommandError
+	if errors.As(err, &cmdErr) {
+		if cmdErr.Stderr == "" {
+			t.Error("expected stderr in CommandError")
+		}
+	} else {
+		t.Errorf("expected CommandError, got %T", err)
+	}
+}

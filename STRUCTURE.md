@@ -17,7 +17,7 @@ mosaic/
 │
 ├── internal/                # Internal utilities (not exported)
 │   └── executor/           # Command execution abstraction
-│       ├── executor.go     # Interface & RealCommandExecutor
+│       ├── executor.go     # Interface (Execute, ExecuteWithProgress) & RealCommandExecutor
 │       ├── mock.go         # MockCommandExecutor
 │       └── executor_test.go
 │
@@ -41,6 +41,9 @@ mosaic/
 ├── LICENSE                  # MIT License
 ├── README.md                # Documentation
 ├── examples/                # Usage examples
+│   ├── simple_hls/          # Basic HLS encoding
+│   ├── advanced_dash/       # Advanced DASH with progress and GPU
+│   └── multi_gpu/           # Hardware acceleration examples
 └── .gitignore              # Git ignore rules
 ```
 

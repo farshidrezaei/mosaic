@@ -1,85 +1,90 @@
 package encoder
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
-func TestCalcGOP(t *testing.T) {
+func TestParseProgress(t *testing.T) {
 	tests := []struct {
-		name       string
-		fps        float64
-		segmentSec int
-		expected   int
+		expected map[string]string
+		name     string
+		input    string
 	}{
-		{"30fps 5sec segment", 30.0, 5, 150},
-		{"24fps 5sec segment", 24.0, 5, 120},
-		{"29.97fps 5sec segment", 29.97, 5, 150},
-		{"25fps 2sec segment", 25.0, 2, 50},
-		{"60fps 5sec segment", 60.0, 5, 300},
-		{"23.976fps 5sec segment", 23.976, 5, 120},
-		{"low fps forces minimum", 4.0, 5, 24}, // 20 rounds to 24
-		{"odd GOP becomes even", 5.0, 5, 26},   // 25 -> 26
+		{
+			name:  "standard progress output",
+			input: "frame=100\nfps=30.0\nbitrate=1000.0kbits/s\nout_time=00:00:10.000000\nspeed=1.5x\nprogress=continue\n",
+			expected: map[string]string{
+				"frame":    "100",
+				"fps":      "30.0",
+				"bitrate":  "1000.0kbits/s",
+				"out_time": "00:00:10.000000",
+				"speed":    "1.5x",
+				"progress": "continue",
+			},
+		},
+		{
+			name:     "empty input",
+			input:    "",
+			expected: map[string]string{},
+		},
+		{
+			name:  "malformed input",
+			input: "invalid line\nkey=value\n",
+			expected: map[string]string{
+				"key": "value",
+			},
+		},
+		{
+			name:  "input with spaces",
+			input: "key = value \n",
+			expected: map[string]string{
+				"key": "value",
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calcGOP(tt.fps, tt.segmentSec)
-			if result != tt.expected {
-				t.Errorf("expected %d, got %d", tt.expected, result)
+			got := ParseProgress(tt.input)
+			if !reflect.DeepEqual(got, tt.expected) {
+				t.Errorf("ParseProgress() = %v, want %v", got, tt.expected)
 			}
 		})
 	}
 }
-
-func TestBuildVarStreamMap(t *testing.T) {
+func TestCalcGOP(t *testing.T) {
 	tests := []struct {
-		name     string
-		expected string
-		variants int
-		hasAudio bool
+		fps        float64
+		segmentSec int
+		want       int
 	}{
-		{
-			name:     "1 variant with audio",
-			variants: 1,
-			hasAudio: true,
-			expected: "v:0,a:0",
-		},
-		{
-			name:     "1 variant no audio",
-			variants: 1,
-			hasAudio: false,
-			expected: "v:0",
-		},
-		{
-			name:     "3 variants with audio",
-			variants: 3,
-			hasAudio: true,
-			expected: "v:0,a:0 v:1,a:1 v:2,a:2",
-		},
-		{
-			name:     "3 variants no audio",
-			variants: 3,
-			hasAudio: false,
-			expected: "v:0 v:1 v:2",
-		},
-		{
-			name:     "2 variants with audio",
-			variants: 2,
-			hasAudio: true,
-			expected: "v:0,a:0 v:1,a:1",
-		},
-		{
-			name:     "2 variants no audio",
-			variants: 2,
-			hasAudio: false,
-			expected: "v:0 v:1",
-		},
+		{fps: 30.0, segmentSec: 2, want: 60},
+		{fps: 23.976, segmentSec: 2, want: 48}, // 47.952 -> 48
+		{fps: 30.0, segmentSec: 5, want: 150},
+		{fps: 10.0, segmentSec: 2, want: 24}, // 20 -> 24 (min)
+		{fps: 25.0, segmentSec: 1, want: 26}, // 25 -> 26 (even)
 	}
 
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := buildVarStreamMap(tt.variants, tt.hasAudio)
-			if result != tt.expected {
-				t.Errorf("expected %q, got %q", tt.expected, result)
+		got := calcGOP(tt.fps, tt.segmentSec)
+		if got != tt.want {
+			t.Errorf("calcGOP(%v, %v) = %v, want %v", tt.fps, tt.segmentSec, got, tt.want)
+		}
+	}
+}
+
+func TestCalcGOPProperties(t *testing.T) {
+	// Property: GOP should always be even and >= 24
+	for fps := 1.0; fps <= 120.0; fps += 0.5 {
+		for seg := 1; seg <= 10; seg++ {
+			got := calcGOP(fps, seg)
+			if got%2 != 0 {
+				t.Errorf("calcGOP(%v, %v) = %v, want even", fps, seg, got)
 			}
-		})
+			if got < 24 {
+				t.Errorf("calcGOP(%v, %v) = %v, want >= 24", fps, seg, got)
+			}
+		}
 	}
 }

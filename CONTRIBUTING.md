@@ -38,6 +38,18 @@ golangci-lint run
 - **Use keyed fields for struct literals** (e.g., `User{Name: "Alice"}` instead of `User{"Alice"}`).
 - Exported functions and types **must** have comments (for Godoc).
 - Keep packages small and focused.
+- **Use structured logging** (`log/slog`) instead of `fmt.Printf`.
+- **Update the Changelog**: Add a brief description of your changes to the `[Unreleased]` section of `CHANGELOG.md`.
+
+## 📝 Changelog Management
+
+We follow the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. Please ensure your PR includes an update to the `CHANGELOG.md` file under the appropriate category:
+- `Added` for new features.
+- `Changed` for changes in existing functionality.
+- `Deprecated` for soon-to-be removed features.
+- `Removed` for now removed features.
+- `Fixed` for any bug fixes.
+- `Security` in case of vulnerabilities.
 
 ## 🚀 Submitting a Pull Request
 

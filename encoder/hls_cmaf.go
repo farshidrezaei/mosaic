@@ -13,8 +13,15 @@ import (
 	"github.com/farshidrezaei/mosaic/probe"
 )
 
+// EncoderOptions defines options for the encoder.
+type EncoderOptions struct {
+	GPU      config.GPUType
+	LogLevel string
+	Threads  int
+}
+
 // EncodeHLSCMAF encodes the input video to HLS with CMAF segments.
-// It uses the default command executor.
+// It uses the default command executor and default options.
 func EncodeHLSCMAF(
 	ctx context.Context,
 	input string,
@@ -23,10 +30,11 @@ func EncodeHLSCMAF(
 	profile config.Profile,
 	l []ladder.Rendition,
 ) error {
-	return EncodeHLSCMAFWithExecutor(ctx, input, outDir, info, profile, l, executor.DefaultExecutor)
+	return EncodeHLSCMAFWithExecutor(ctx, input, outDir, info, profile, l, executor.DefaultExecutor, nil, EncoderOptions{LogLevel: "warning"})
 }
 
 // EncodeHLSCMAFWithExecutor encodes the input video to HLS with CMAF segments using the provided executor.
+// It constructs a complex FFmpeg command to generate multiple renditions in a single pass.
 func EncodeHLSCMAFWithExecutor(
 	ctx context.Context,
 	input string,
@@ -35,6 +43,8 @@ func EncodeHLSCMAFWithExecutor(
 	profile config.Profile,
 	l []ladder.Rendition,
 	exec executor.CommandExecutor,
+	progressHandler func(map[string]string),
+	opts EncoderOptions,
 ) error {
 
 	filter := buildFilterGraph(l)
@@ -42,7 +52,7 @@ func EncodeHLSCMAFWithExecutor(
 
 	args := []string{
 		"-y",
-		"-loglevel", "warning",
+		"-loglevel", opts.LogLevel,
 
 		// input safety
 		"-analyzeduration", "100M",
@@ -50,15 +60,30 @@ func EncodeHLSCMAFWithExecutor(
 		"-fflags", "+genpts",
 
 		"-i", input,
-		"-filter_complex", filter,
 	}
+
+	if opts.Threads > 0 {
+		args = append(args, "-threads", strconv.Itoa(opts.Threads))
+	}
+
+	args = append(args, "-filter_complex", filter)
 
 	// ---------- VIDEO ----------
 	for i, r := range l {
+		codec := "libx264"
+		switch opts.GPU {
+		case config.GPU_NVENC:
+			codec = "h264_nvenc"
+		case config.GPU_VAAPI:
+			codec = "h264_vaapi"
+		case config.GPU_VIDEOTOOLBOX:
+			codec = "h264_videotoolbox"
+		}
+
 		args = append(args,
 			"-map", fmt.Sprintf("[v%do]", i),
 
-			fmt.Sprintf("-c:v:%d", i), "libx264",
+			fmt.Sprintf("-c:v:%d", i), codec,
 			fmt.Sprintf("-profile:v:%d", i), r.Profile,
 			fmt.Sprintf("-level:v:%d", i), r.Level,
 
@@ -116,9 +141,28 @@ func EncodeHLSCMAFWithExecutor(
 		filepath.Join(outDir, "stream_%v.m3u8"),
 	)
 
-	_, err := exec.Execute(ctx, "ffmpeg", args...)
-	if err != nil {
-		return fmt.Errorf("ffmpeg HLS failed: %w", err)
+	if progressHandler != nil {
+		args = append(args, "-progress", "pipe:1")
+		progressChan := make(chan string)
+		errChan := make(chan error, 1)
+
+		go func() {
+			_, err := exec.ExecuteWithProgress(ctx, progressChan, "ffmpeg", args...)
+			errChan <- err
+		}()
+
+		for raw := range progressChan {
+			progressHandler(ParseProgress(raw))
+		}
+
+		if err := <-errChan; err != nil {
+			return fmt.Errorf("ffmpeg HLS failed: %w", err)
+		}
+	} else {
+		_, err := exec.Execute(ctx, "ffmpeg", args...)
+		if err != nil {
+			return fmt.Errorf("ffmpeg HLS failed: %w", err)
+		}
 	}
 
 	return nil

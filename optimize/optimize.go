@@ -2,6 +2,9 @@ package optimize
 
 import "github.com/farshidrezaei/mosaic/ladder"
 
+// Apply performs bitrate optimization and rendition trimming on the encoding ladder.
+// It caps bitrates based on resolution and removes redundant renditions that are
+// too close in resolution to each other.
 func Apply(in []ladder.Rendition) []ladder.Rendition {
 	var out []ladder.Rendition
 
@@ -14,6 +17,8 @@ func Apply(in []ladder.Rendition) []ladder.Rendition {
 	return trim(out)
 }
 
+// trim removes renditions that are too close in resolution to the previous one.
+// It uses a 0.7 height ratio threshold to determine if a rendition is redundant.
 func trim(in []ladder.Rendition) []ladder.Rendition {
 	if len(in) <= 1 {
 		return in

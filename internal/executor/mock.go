@@ -15,8 +15,9 @@ type MockCommandExecutor struct {
 
 // MockResponse defines a mock response for a command.
 type MockResponse struct {
-	Err    error
-	Output []byte
+	Err          error
+	Output       []byte
+	ProgressData []string
 }
 
 // MockCall records a command execution.
@@ -27,6 +28,11 @@ type MockCall struct {
 
 // Execute records the call and returns the mocked response.
 func (m *MockCommandExecutor) Execute(ctx context.Context, name string, args ...string) ([]byte, error) {
+	return m.ExecuteWithProgress(ctx, nil, name, args...)
+}
+
+// ExecuteWithProgress records the call and returns the mocked response.
+func (m *MockCommandExecutor) ExecuteWithProgress(ctx context.Context, progress chan<- string, name string, args ...string) ([]byte, error) {
 	if m.CallLog == nil {
 		m.CallLog = []MockCall{}
 	}
@@ -43,6 +49,13 @@ func (m *MockCommandExecutor) Execute(ctx context.Context, name string, args ...
 	resp, ok := m.Responses[name]
 	if !ok {
 		return nil, fmt.Errorf("no mock response configured for: %s", name)
+	}
+
+	if progress != nil {
+		for _, p := range resp.ProgressData {
+			progress <- p
+		}
+		close(progress)
 	}
 
 	return resp.Output, resp.Err

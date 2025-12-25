@@ -154,6 +154,13 @@ type customMockExecutor struct {
 }
 
 func (m *customMockExecutor) Execute(ctx context.Context, name string, args ...string) ([]byte, error) {
+	return m.ExecuteWithProgress(ctx, nil, name, args...)
+}
+
+func (m *customMockExecutor) ExecuteWithProgress(ctx context.Context, progress chan<- string, name string, args ...string) ([]byte, error) {
+	if progress != nil {
+		close(progress)
+	}
 	for _, arg := range args {
 		if arg == "v:0" {
 			return m.videoResponse.Output, m.videoResponse.Err

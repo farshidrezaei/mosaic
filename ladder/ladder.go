@@ -2,8 +2,9 @@ package ladder
 
 import "github.com/farshidrezaei/mosaic/probe"
 
-// Build generates an initial encoding ladder based on the source video information.
-// It includes renditions for 1080p, 720p, and 360p if the source height is sufficient.
+// Build generates an initial encoding ladder based on the source video's height.
+// It creates a set of standard renditions (1080p, 720p, 360p) that are suitable
+// for adaptive bitrate streaming.
 func Build(info probe.VideoInfo) []Rendition {
 	var out []Rendition
 

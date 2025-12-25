@@ -10,25 +10,25 @@ import (
 	"github.com/farshidrezaei/mosaic/internal/executor"
 )
 
-// VideoInfo contains technical information about a video file.
+// VideoInfo contains technical metadata about a video file extracted via ffprobe.
 type VideoInfo struct {
 	// Width is the horizontal resolution in pixels.
 	Width int
 	// Height is the vertical resolution in pixels.
 	Height int
-	// FPS is the average frame rate of the video.
+	// FPS is the average frame rate of the video (e.g., 23.976, 30.0, 60.0).
 	FPS float64
-	// HasAudio indicates if the video file contains at least one audio stream.
+	// HasAudio is true if the video file contains at least one audio stream.
 	HasAudio bool
 }
 
-// Input returns video information for the given input file.
-// It uses the default command executor.
+// Input returns technical metadata for the given video file or URL.
+// It uses the default command executor to run ffprobe.
 func Input(ctx context.Context, input string) (VideoInfo, error) {
 	return InputWithExecutor(ctx, input, executor.DefaultExecutor)
 }
 
-// InputWithExecutor returns video information using the provided executor.
+// InputWithExecutor is like Input but allows providing a custom CommandExecutor.
 func InputWithExecutor(ctx context.Context, input string, exec executor.CommandExecutor) (VideoInfo, error) {
 	// Probe video stream
 	args := []string{

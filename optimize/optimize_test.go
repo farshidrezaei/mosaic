@@ -95,6 +95,24 @@ func TestApply(t *testing.T) {
 			input:    []ladder.Rendition{},
 			expected: []ladder.Rendition{},
 		},
+		{
+			name: "very small resolution - cap at 1000",
+			input: []ladder.Rendition{
+				{Width: 160, Height: 90, MaxRate: 2000, BufSize: 4000, Profile: "baseline", Level: "1.0"},
+			},
+			expected: []ladder.Rendition{
+				{Width: 160, Height: 90, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "1.0"},
+			},
+		},
+		{
+			name: "very high bitrate at low resolution",
+			input: []ladder.Rendition{
+				{Width: 640, Height: 360, MaxRate: 10000, BufSize: 20000, Profile: "main", Level: "3.1"},
+			},
+			expected: []ladder.Rendition{
+				{Width: 640, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "main", Level: "3.1"},
+			},
+		},
 	}
 
 	for _, tt := range tests {

@@ -13,7 +13,7 @@ import (
 )
 
 // EncodeDASHCMAF encodes the input video to DASH with CMAF segments.
-// It uses the default command executor.
+// It uses the default command executor and default options.
 func EncodeDASHCMAF(
 	ctx context.Context,
 	input string,
@@ -22,10 +22,11 @@ func EncodeDASHCMAF(
 	profile config.Profile,
 	l []ladder.Rendition,
 ) error {
-	return EncodeDASHCMAFWithExecutor(ctx, input, outDir, info, profile, l, executor.DefaultExecutor)
+	return EncodeDASHCMAFWithExecutor(ctx, input, outDir, info, profile, l, executor.DefaultExecutor, nil, EncoderOptions{LogLevel: "warning"})
 }
 
 // EncodeDASHCMAFWithExecutor encodes the input video to DASH with CMAF segments using the provided executor.
+// It generates a DASH-compliant manifest (.mpd) and fragmented MP4 segments.
 func EncodeDASHCMAFWithExecutor(
 	ctx context.Context,
 	input string,
@@ -34,13 +35,15 @@ func EncodeDASHCMAFWithExecutor(
 	profile config.Profile,
 	l []ladder.Rendition,
 	exec executor.CommandExecutor,
+	progressHandler func(map[string]string),
+	opts EncoderOptions,
 ) error {
 
 	gop := calcGOP(info.FPS, profile.SegmentDuration)
 
 	args := []string{
 		"-y",
-		"-loglevel", "warning",
+		"-loglevel", opts.LogLevel,
 
 		"-analyzeduration", "100M",
 		"-probesize", "100M",
@@ -49,12 +52,26 @@ func EncodeDASHCMAFWithExecutor(
 		"-i", input,
 	}
 
+	if opts.Threads > 0 {
+		args = append(args, "-threads", strconv.Itoa(opts.Threads))
+	}
+
 	// ---------- VIDEO ----------
 	for i, r := range l {
+		codec := "libx264"
+		switch opts.GPU {
+		case config.GPU_NVENC:
+			codec = "h264_nvenc"
+		case config.GPU_VAAPI:
+			codec = "h264_vaapi"
+		case config.GPU_VIDEOTOOLBOX:
+			codec = "h264_videotoolbox"
+		}
+
 		args = append(args,
 			"-map", "0:v:0",
 
-			fmt.Sprintf("-c:v:%d", i), "libx264",
+			fmt.Sprintf("-c:v:%d", i), codec,
 			fmt.Sprintf("-profile:v:%d", i), r.Profile,
 			fmt.Sprintf("-level:v:%d", i), r.Level,
 
@@ -105,9 +122,28 @@ func EncodeDASHCMAFWithExecutor(
 		filepath.Join(outDir, "manifest.mpd"),
 	)
 
-	_, err := exec.Execute(ctx, "ffmpeg", args...)
-	if err != nil {
-		return fmt.Errorf("ffmpeg DASH failed: %w", err)
+	if progressHandler != nil {
+		args = append(args, "-progress", "pipe:1")
+		progressChan := make(chan string)
+		errChan := make(chan error, 1)
+
+		go func() {
+			_, err := exec.ExecuteWithProgress(ctx, progressChan, "ffmpeg", args...)
+			errChan <- err
+		}()
+
+		for raw := range progressChan {
+			progressHandler(ParseProgress(raw))
+		}
+
+		if err := <-errChan; err != nil {
+			return fmt.Errorf("ffmpeg DASH failed: %w", err)
+		}
+	} else {
+		_, err := exec.Execute(ctx, "ffmpeg", args...)
+		if err != nil {
+			return fmt.Errorf("ffmpeg DASH failed: %w", err)
+		}
 	}
 
 	return nil

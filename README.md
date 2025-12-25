@@ -16,8 +16,10 @@ of FFmpeg command construction.
 - ⚡ **Dual Profiles** - VOD (5s segments) and Live (2s low-latency) modes
 - 🎨 **Smart Scaling** - Maintains aspect ratio with letterboxing when needed
 - 🔊 **Audio Detection** - Automatically handles videos with or without audio
+- 📊 **Progress Reporting** - Real-time updates on encoding status
+- ⚙️ **Functional Options** - Flexible configuration for threads, GPU, and logging
+- 🚀 **Hardware Acceleration** - Support for NVIDIA NVENC, Intel/AMD VAAPI, and Apple VideoToolbox
 - 🛡️ **100% Test Coverage** - Comprehensive test suite with mocked dependencies
-- 🚀 **Production Ready** - Robust FFmpeg flags for handling edge cases
 
 ## 📋 Requirements
 
@@ -48,12 +50,20 @@ import (
 
 func main() {
 	job := mosaic.Job{
-		Input:     "/path/to/input.mp4", // or a url
+		Input:     "/path/to/input.mp4",
 		OutputDir: "/output/hls",
 		Profile:   mosaic.ProfileVOD,
+		ProgressHandler: func(info mosaic.ProgressInfo) {
+			fmt.Printf("Progress: %s, Speed: %s\n", info.CurrentTime, info.Speed)
+		},
 	}
 
-	if err := mosaic.EncodeHls(context.Background(), job); err != nil {
+	// Use functional options for more control
+	err := mosaic.EncodeHls(context.Background(), job, 
+		mosaic.WithThreads(4),
+		mosaic.WithGPU(),
+	)
+	if err != nil {
 		log.Fatal(err)
 	}
 }
@@ -209,16 +219,44 @@ mosaic/
     └── dash_cmaf.go         # DASH encoder
 ```
 
+### Hardware Acceleration
+
+Mosaic supports multiple hardware acceleration backends:
+
+```go
+// NVIDIA NVENC (Default)
+mosaic.EncodeHls(ctx, job, mosaic.WithNVENC())
+
+// Intel/AMD VAAPI
+mosaic.EncodeHls(ctx, job, mosaic.WithVAAPI())
+
+// Apple VideoToolbox
+mosaic.EncodeHls(ctx, job, mosaic.WithVideoToolbox())
+
+// Generic GPU option (defaults to NVENC)
+mosaic.EncodeHls(ctx, job, mosaic.WithGPU())
+```
+
 ## 🎯 API Reference
 
 ### Types
 
 ```go
 type Job struct {
-Input     string  // Path to input video
-OutputDir string  // Output directory for segments/manifests
-Profile   Profile // ProfileVOD or ProfileLive
+	Input           string          // Path to input video
+	OutputDir       string          // Output directory for segments/manifests
+	Profile         Profile         // ProfileVOD or ProfileLive
+	ProgressHandler ProgressHandler // Optional progress callback
 }
+
+type ProgressInfo struct {
+	Percentage  float64
+	CurrentTime string
+	Bitrate     string
+	Speed       string
+}
+
+type ProgressHandler func(ProgressInfo)
 
 type Profile string
 const (
@@ -231,16 +269,22 @@ ProfileLive Profile = "live" // 2-second segments
 
 ```go
 // Encode to HLS with CMAF segments
-func EncodeHls(ctx context.Context, job Job) error
+func EncodeHls(ctx context.Context, job Job, opts ...Option) error
 
 // Encode to HLS with a custom command executor
-func EncodeHlsWithExecutor(ctx context.Context, job Job, exec executor.CommandExecutor) error
+func EncodeHlsWithExecutor(ctx context.Context, job Job, exec executor.CommandExecutor, opts ...Option) error
 
 // Encode to DASH with CMAF segments
-func EncodeDash(ctx context.Context, job Job) error
+func EncodeDash(ctx context.Context, job Job, opts ...Option) error
 
 // Encode to DASH with a custom command executor
-func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandExecutor) error
+func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandExecutor, opts ...Option) error
+
+// Functional Options
+func WithThreads(n int) Option
+func WithGPU() Option
+func WithLogLevel(level string) Option
+func WithLogger(logger *slog.Logger) Option
 ```
 
 ## 🤝 Contributing
