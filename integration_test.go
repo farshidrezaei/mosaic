@@ -21,7 +21,12 @@ func TestIntegrationFFmpeg(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temp dir: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func(path string) {
+		err = os.RemoveAll(path)
+		if err != nil {
+			t.Fatalf("Failed to remove temp dir: %v", err)
+		}
+	}(tmpDir)
 
 	// We need a real input file. For now, we'll assume there's a sample.mp4 in testdata
 	// or we could generate one using FFmpeg.
@@ -78,6 +83,6 @@ func TestIntegrationFFmpeg(t *testing.T) {
 func runCommand(name string, args ...string) error {
 	// Simple wrapper for os/exec to avoid circular dependency on internal/executor
 	// which might be overkill for this helper.
-	cmd := exec.Command(name, args...)
+	cmd := exec.CommandContext(context.Background(), name, args...)
 	return cmd.Run()
 }
