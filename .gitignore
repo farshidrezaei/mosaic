@@ -1,3 +1,5 @@
 /.idea
 coverage.html
 coverage.out
+/output/
+/exp.go
