@@ -68,7 +68,9 @@ func TestBuild(t *testing.T) {
 				Height: 240,
 				FPS:    30.0,
 			},
-			expected: []Rendition{},
+			expected: []Rendition{
+				{Width: 640, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
+			},
 		},
 		{
 			name: "540p source - 360p only",
