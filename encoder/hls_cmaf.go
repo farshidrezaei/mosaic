@@ -93,6 +93,7 @@ func EncodeHLSCMAFWithExecutor(
 			"-g", strconv.Itoa(gop),
 			"-keyint_min", strconv.Itoa(gop),
 			"-sc_threshold", "0",
+			"-bf", fmt.Sprintf("%d", r.BFrames),
 
 			fmt.Sprintf("-maxrate:v:%d", i), fmt.Sprintf("%dk", r.MaxRate),
 			fmt.Sprintf("-bufsize:v:%d", i), fmt.Sprintf("%dk", r.BufSize),
