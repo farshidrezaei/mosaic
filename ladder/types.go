@@ -14,4 +14,6 @@ type Rendition struct {
 	MaxRate int
 	// BufSize is the VBV buffer size in kbps.
 	BufSize int
+	// BFrames number of B-frames (Bidirectional frames) between I/P frames.
+	BFrames int
 }
