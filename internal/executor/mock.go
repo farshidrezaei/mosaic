@@ -15,10 +15,10 @@ type MockCommandExecutor struct {
 
 // MockResponse defines a mock response for a command.
 type MockResponse struct {
+	Usage        *Usage
 	Err          error
 	Output       []byte
 	ProgressData []string
-	Usage        *Usage
 }
 
 // MockCall records a command execution.
