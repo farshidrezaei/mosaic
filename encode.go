@@ -125,13 +125,13 @@ func initializeWithExecutor(ctx context.Context, job Job, exec executor.CommandE
 // EncodeHls encodes the given job into HLS format with CMAF segments.
 // It automatically builds an optimized encoding ladder and generates a master playlist.
 // Functional options can be provided to customize the encoding process.
-func EncodeHls(ctx context.Context, job Job, opts ...Option) error {
+func EncodeHls(ctx context.Context, job Job, opts ...Option) (*executor.Usage, error) {
 	return EncodeHlsWithExecutor(ctx, job, executor.DefaultExecutor, opts...)
 }
 
 // EncodeHlsWithExecutor is like EncodeHls but allows providing a custom CommandExecutor.
 // This is primarily used for testing or advanced command execution scenarios.
-func EncodeHlsWithExecutor(ctx context.Context, job Job, exec executor.CommandExecutor, opts ...Option) error {
+func EncodeHlsWithExecutor(ctx context.Context, job Job, exec executor.CommandExecutor, opts ...Option) (*executor.Usage, error) {
 	o := defaultOptions()
 	for _, opt := range opts {
 		opt(o)
@@ -139,7 +139,7 @@ func EncodeHlsWithExecutor(ctx context.Context, job Job, exec executor.CommandEx
 
 	info, profile, l, err := initializeWithExecutor(ctx, job, exec, o)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// 2. Encode
 	return encoder.EncodeHLSCMAFWithExecutor(
@@ -171,13 +171,13 @@ func EncodeHlsWithExecutor(ctx context.Context, job Job, exec executor.CommandEx
 // EncodeDash encodes the given job into DASH format with CMAF segments.
 // It automatically builds an optimized encoding ladder and generates a DASH manifest (.mpd).
 // Functional options can be provided to customize the encoding process.
-func EncodeDash(ctx context.Context, job Job, opts ...Option) error {
+func EncodeDash(ctx context.Context, job Job, opts ...Option) (*executor.Usage, error) {
 	return EncodeDashWithExecutor(ctx, job, executor.DefaultExecutor, opts...)
 }
 
 // EncodeDashWithExecutor is like EncodeDash but allows providing a custom CommandExecutor.
 // This is primarily used for testing or advanced command execution scenarios.
-func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandExecutor, opts ...Option) error {
+func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandExecutor, opts ...Option) (*executor.Usage, error) {
 	o := defaultOptions()
 	for _, opt := range opts {
 		opt(o)
@@ -185,7 +185,7 @@ func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandE
 
 	info, profile, l, err := initializeWithExecutor(ctx, job, exec, o)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// 2. Encode
 	return encoder.EncodeDASHCMAFWithExecutor(

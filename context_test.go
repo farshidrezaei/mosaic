@@ -20,7 +20,7 @@ func TestContextCancellation(t *testing.T) {
 	// Run a command that takes longer than the timeout
 	// "sleep 2" takes 2 seconds
 	start := time.Now()
-	_, err := exec.Execute(ctx, "sleep", "2")
+	_, _, err := exec.Execute(ctx, "sleep", "2")
 	duration := time.Since(start)
 
 	// Check if we got an error (expected context deadline exceeded or signal killed)

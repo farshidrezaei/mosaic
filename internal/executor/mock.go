@@ -18,6 +18,7 @@ type MockResponse struct {
 	Err          error
 	Output       []byte
 	ProgressData []string
+	Usage        *Usage
 }
 
 // MockCall records a command execution.
@@ -27,12 +28,12 @@ type MockCall struct {
 }
 
 // Execute records the call and returns the mocked response.
-func (m *MockCommandExecutor) Execute(ctx context.Context, name string, args ...string) ([]byte, error) {
+func (m *MockCommandExecutor) Execute(ctx context.Context, name string, args ...string) ([]byte, *Usage, error) {
 	return m.ExecuteWithProgress(ctx, nil, name, args...)
 }
 
 // ExecuteWithProgress records the call and returns the mocked response.
-func (m *MockCommandExecutor) ExecuteWithProgress(ctx context.Context, progress chan<- string, name string, args ...string) ([]byte, error) {
+func (m *MockCommandExecutor) ExecuteWithProgress(ctx context.Context, progress chan<- string, name string, args ...string) ([]byte, *Usage, error) {
 	if m.CallLog == nil {
 		m.CallLog = []MockCall{}
 	}
@@ -43,12 +44,12 @@ func (m *MockCommandExecutor) ExecuteWithProgress(ctx context.Context, progress 
 	})
 
 	if m.Responses == nil {
-		return nil, fmt.Errorf("no mock response configured for: %s", name)
+		return nil, nil, fmt.Errorf("no mock response configured for: %s", name)
 	}
 
 	resp, ok := m.Responses[name]
 	if !ok {
-		return nil, fmt.Errorf("no mock response configured for: %s", name)
+		return nil, nil, fmt.Errorf("no mock response configured for: %s", name)
 	}
 
 	if progress != nil {
@@ -58,7 +59,7 @@ func (m *MockCommandExecutor) ExecuteWithProgress(ctx context.Context, progress 
 		close(progress)
 	}
 
-	return resp.Output, resp.Err
+	return resp.Output, resp.Usage, resp.Err
 }
 
 // GetCallCount returns the number of times a command was executed.

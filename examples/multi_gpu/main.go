@@ -38,21 +38,21 @@ func main() {
 
 	// Example 1: NVIDIA NVENC
 	fmt.Println("\n--- Using NVIDIA NVENC ---")
-	err := mosaic.EncodeHls(context.Background(), job, mosaic.WithNVENC())
+	_, err := mosaic.EncodeHls(context.Background(), job, mosaic.WithNVENC())
 	if err != nil {
 		fmt.Printf("NVENC failed (likely no hardware): %v\n", err)
 	}
 
 	// Example 2: Intel/AMD VAAPI
 	fmt.Println("\n--- Using VAAPI ---")
-	err = mosaic.EncodeHls(context.Background(), job, mosaic.WithVAAPI())
+	_, err = mosaic.EncodeHls(context.Background(), job, mosaic.WithVAAPI())
 	if err != nil {
 		fmt.Printf("VAAPI failed (likely no hardware): %v\n", err)
 	}
 
 	// Example 3: Apple VideoToolbox
 	fmt.Println("\n--- Using VideoToolbox ---")
-	err = mosaic.EncodeHls(context.Background(), job, mosaic.WithVideoToolbox())
+	_, err = mosaic.EncodeHls(context.Background(), job, mosaic.WithVideoToolbox())
 	if err != nil {
 		fmt.Printf("VideoToolbox failed (likely no hardware): %v\n", err)
 	}

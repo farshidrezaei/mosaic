@@ -59,7 +59,7 @@ func main() {
 	}
 
 	// Use functional options for more control
-	err := mosaic.EncodeHls(context.Background(), job, 
+	_, err := mosaic.EncodeHls(context.Background(), job, 
 		mosaic.WithThreads(4),
 		mosaic.WithGPU(),
 	)
@@ -91,9 +91,12 @@ OutputDir: "/output/dash",
 Profile:   mosaic.ProfileLive,
 }
 
-if err := mosaic.EncodeDash(context.Background(), job); err != nil {
+_, err := mosaic.EncodeDash(context.Background(), job);
+
+if err != nil {
 log.Fatal(err)
 }
+
 ```
 
 **Output:**

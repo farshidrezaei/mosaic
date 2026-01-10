@@ -38,7 +38,7 @@ func InputWithExecutor(ctx context.Context, input string, exec executor.CommandE
 		"-of", "json",
 		input,
 	}
-	out, err := exec.Execute(ctx, "ffprobe", args...)
+	out, _, err := exec.Execute(ctx, "ffprobe", args...)
 	if err != nil {
 		return VideoInfo{}, err
 	}
@@ -66,7 +66,7 @@ func InputWithExecutor(ctx context.Context, input string, exec executor.CommandE
 	}
 
 	// audio check
-	aout, err := exec.Execute(
+	aout, _, err := exec.Execute(
 		ctx,
 		"ffprobe",
 		"-v", "error",

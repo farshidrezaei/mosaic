@@ -130,7 +130,7 @@ func TestEncodeHlsWithExecutor(t *testing.T) {
 				mock.probeVideoResponse.Err = errors.New("file not found")
 			}
 
-			err := EncodeHlsWithExecutor(context.Background(), tt.job, mock)
+			_, err := EncodeHlsWithExecutor(context.Background(), tt.job, mock)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("EncodeHlsWithExecutor() error = %v, wantErr %v", err, tt.wantErr)
@@ -185,7 +185,7 @@ func TestEncodeDashWithExecutor(t *testing.T) {
 				mock.ffmpegResponse.Err = errors.New("encoding failed")
 			}
 
-			err := EncodeDashWithExecutor(context.Background(), tt.job, mock)
+			_, err := EncodeDashWithExecutor(context.Background(), tt.job, mock)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("EncodeDashWithExecutor() error = %v, wantErr %v", err, tt.wantErr)
@@ -207,25 +207,25 @@ type sequentialMock struct {
 	callCount      int
 }
 
-func (m *sequentialMock) Execute(ctx context.Context, name string, args ...string) ([]byte, error) {
+func (m *sequentialMock) Execute(ctx context.Context, name string, args ...string) ([]byte, *executor.Usage, error) {
 	return m.ExecuteWithProgress(ctx, nil, name, args...)
 }
 
-func (m *sequentialMock) ExecuteWithProgress(ctx context.Context, progress chan<- string, name string, args ...string) ([]byte, error) {
+func (m *sequentialMock) ExecuteWithProgress(ctx context.Context, progress chan<- string, name string, args ...string) ([]byte, *executor.Usage, error) {
 	if progress != nil {
 		close(progress)
 	}
 	m.callCount++
 	if m.callCount == 1 {
-		return m.videoResponse.Output, m.videoResponse.Err
+		return m.videoResponse.Output, m.videoResponse.Usage, m.videoResponse.Err
 	}
 	if m.callCount == 2 {
-		return m.audioResponse.Output, m.audioResponse.Err
+		return m.audioResponse.Output, m.audioResponse.Usage, m.audioResponse.Err
 	}
 	if m.callCount == 3 {
-		return m.ffmpegResponse.Output, m.ffmpegResponse.Err
+		return m.ffmpegResponse.Output, m.ffmpegResponse.Usage, m.ffmpegResponse.Err
 	}
-	return nil, fmt.Errorf("unexpected call to Execute: %s %v", name, args)
+	return nil, nil, fmt.Errorf("unexpected call to Execute: %s %v", name, args)
 }
 
 // fullMock handles all commands (ffprobe x2, ffmpeg)
@@ -238,16 +238,16 @@ type fullMock struct {
 	ffmpegCallCount    int
 }
 
-func (m *fullMock) Execute(ctx context.Context, name string, args ...string) ([]byte, error) {
+func (m *fullMock) Execute(ctx context.Context, name string, args ...string) ([]byte, *executor.Usage, error) {
 	return m.ExecuteWithProgress(ctx, nil, name, args...)
 }
 
-func (m *fullMock) ExecuteWithProgress(ctx context.Context, progress chan<- string, name string, args ...string) ([]byte, error) {
+func (m *fullMock) ExecuteWithProgress(ctx context.Context, progress chan<- string, name string, args ...string) ([]byte, *executor.Usage, error) {
 	if name == "ffprobe" {
 		if progress != nil {
 			close(progress)
 		}
-		return m.probeVideoResponse.Output, m.probeVideoResponse.Err
+		return m.probeVideoResponse.Output, m.probeVideoResponse.Usage, m.probeVideoResponse.Err
 	}
 
 	m.callCount++
@@ -260,7 +260,7 @@ func (m *fullMock) ExecuteWithProgress(ctx context.Context, progress chan<- stri
 			}
 			close(progress)
 		}
-		return m.ffmpegResponse.Output, m.ffmpegResponse.Err
+		return m.ffmpegResponse.Output, m.ffmpegResponse.Usage, m.ffmpegResponse.Err
 	}
 
 	if progress != nil {
@@ -271,13 +271,13 @@ func (m *fullMock) ExecuteWithProgress(ctx context.Context, progress chan<- stri
 	if m.callCount <= 2 {
 		if m.callCount == 1 {
 			// Video probe
-			return m.probeVideoResponse.Output, m.probeVideoResponse.Err
+			return m.probeVideoResponse.Output, m.probeVideoResponse.Usage, m.probeVideoResponse.Err
 		}
 		// Audio probe
-		return m.probeAudioResponse.Output, m.probeAudioResponse.Err
+		return m.probeAudioResponse.Output, m.probeAudioResponse.Usage, m.probeAudioResponse.Err
 	}
 
-	return nil, errors.New("unexpected call")
+	return nil, nil, errors.New("unexpected call")
 }
 
 func TestProgressReporting(t *testing.T) {
@@ -304,7 +304,7 @@ func TestProgressReporting(t *testing.T) {
 		},
 	}
 
-	err := EncodeHlsWithExecutor(context.Background(), job, mock)
+	_, err := EncodeHlsWithExecutor(context.Background(), job, mock)
 	if err != nil {
 		t.Fatalf("EncodeHlsWithExecutor failed: %v", err)
 	}
@@ -330,12 +330,7 @@ func TestEncodeHls(t *testing.T) {
 	defer func() { executor.DefaultExecutor = origExec }()
 
 	// Use a mock executor
-	mock := executor.NewMockExecutor()
 	// Setup mock responses for probe and ffmpeg
-	mock.Responses["ffprobe"] = executor.MockResponse{
-		Output: []byte(`{"streams":[{"width":1920,"height":1080,"avg_frame_rate":"30/1"}]}`),
-		Err:    nil,
-	}
 	// We need two ffprobe responses (video and audio)
 	// But the mock implementation in executor package might be simple map lookup
 	// Let's check how NewMockExecutor works. It uses a map.
@@ -367,7 +362,7 @@ func TestEncodeHls(t *testing.T) {
 		Profile:   ProfileVOD,
 	}
 
-	err := EncodeHls(context.Background(), job)
+	_, err := EncodeHls(context.Background(), job)
 
 	if err != nil {
 		t.Errorf("EncodeHls() error = %v", err)
@@ -401,7 +396,7 @@ func TestEncodeDash(t *testing.T) {
 		Profile:   ProfileVOD,
 	}
 
-	err := EncodeDash(context.Background(), job)
+	_, err := EncodeDash(context.Background(), job)
 
 	if err != nil {
 		t.Errorf("EncodeDash() error = %v", err)
@@ -461,7 +456,7 @@ func TestProgressReportingDash(t *testing.T) {
 		},
 	}
 
-	err := EncodeDashWithExecutor(context.Background(), job, mock)
+	_, err := EncodeDashWithExecutor(context.Background(), job, mock)
 	if err != nil {
 		t.Fatalf("EncodeDashWithExecutor failed: %v", err)
 	}
@@ -532,7 +527,7 @@ func TestEncodeHlsError(t *testing.T) {
 		probeVideoResponse: executor.MockResponse{Err: errors.New("probe failed")},
 	}
 	job := Job{Input: "test.mp4", OutputDir: "/out", Profile: ProfileVOD}
-	err := EncodeHlsWithExecutor(context.Background(), job, mock)
+	_, err := EncodeHlsWithExecutor(context.Background(), job, mock)
 	if err == nil {
 		t.Error("expected error but got none")
 	}
@@ -543,7 +538,7 @@ func TestEncodeDashError(t *testing.T) {
 		probeVideoResponse: executor.MockResponse{Err: errors.New("probe failed")},
 	}
 	job := Job{Input: "test.mp4", OutputDir: "/out", Profile: ProfileVOD}
-	err := EncodeDashWithExecutor(context.Background(), job, mock)
+	_, err := EncodeDashWithExecutor(context.Background(), job, mock)
 	if err == nil {
 		t.Error("expected error but got none")
 	}
@@ -568,12 +563,12 @@ func TestNilProgressHandler(t *testing.T) {
 		ProgressHandler: nil, // Explicitly nil
 	}
 
-	err := EncodeHlsWithExecutor(context.Background(), job, mock)
+	_, err := EncodeHlsWithExecutor(context.Background(), job, mock)
 	if err != nil {
 		t.Fatalf("EncodeHlsWithExecutor failed: %v", err)
 	}
 
-	err = EncodeDashWithExecutor(context.Background(), job, mock)
+	_, err = EncodeDashWithExecutor(context.Background(), job, mock)
 	if err != nil {
 		t.Fatalf("EncodeDashWithExecutor failed: %v", err)
 	}

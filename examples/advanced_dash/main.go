@@ -45,7 +45,7 @@ func main() {
 	start := time.Now()
 
 	// Execute DASH encoding with advanced options
-	err := mosaic.EncodeDash(context.Background(), job,
+	_, err := mosaic.EncodeDash(context.Background(), job,
 		mosaic.WithNVENC(),    // Use NVIDIA hardware acceleration
 		mosaic.WithThreads(0), // 0 means auto-detect optimal thread count
 		mosaic.WithLogLevel("warning"),

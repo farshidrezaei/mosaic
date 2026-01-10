@@ -153,21 +153,21 @@ type customMockExecutor struct {
 	audioResponse executor.MockResponse
 }
 
-func (m *customMockExecutor) Execute(ctx context.Context, name string, args ...string) ([]byte, error) {
+func (m *customMockExecutor) Execute(ctx context.Context, name string, args ...string) ([]byte, *executor.Usage, error) {
 	return m.ExecuteWithProgress(ctx, nil, name, args...)
 }
 
-func (m *customMockExecutor) ExecuteWithProgress(ctx context.Context, progress chan<- string, name string, args ...string) ([]byte, error) {
+func (m *customMockExecutor) ExecuteWithProgress(ctx context.Context, progress chan<- string, name string, args ...string) ([]byte, *executor.Usage, error) {
 	if progress != nil {
 		close(progress)
 	}
 	for _, arg := range args {
 		if arg == "v:0" {
-			return m.videoResponse.Output, m.videoResponse.Err
+			return m.videoResponse.Output, m.videoResponse.Usage, m.videoResponse.Err
 		}
 		if arg == "a:0" {
-			return m.audioResponse.Output, m.audioResponse.Err
+			return m.audioResponse.Output, m.audioResponse.Usage, m.audioResponse.Err
 		}
 	}
-	return nil, fmt.Errorf("unexpected call to Execute: %s %v", name, args)
+	return nil, nil, fmt.Errorf("unexpected call to Execute: %s %v", name, args)
 }

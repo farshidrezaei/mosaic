@@ -29,7 +29,7 @@ func EncodeHLSCMAF(
 	info probe.VideoInfo,
 	profile config.Profile,
 	l []ladder.Rendition,
-) error {
+) (*executor.Usage, error) {
 	return EncodeHLSCMAFWithExecutor(ctx, input, outDir, info, profile, l, executor.DefaultExecutor, nil, EncoderOptions{LogLevel: "warning"})
 }
 
@@ -45,7 +45,7 @@ func EncodeHLSCMAFWithExecutor(
 	exec executor.CommandExecutor,
 	progressHandler func(map[string]string),
 	opts EncoderOptions,
-) error {
+) (*executor.Usage, error) {
 
 	filter := buildFilterGraph(l)
 	gop := calcGOP(info.FPS, profile.SegmentDuration)
@@ -146,9 +146,11 @@ func EncodeHLSCMAFWithExecutor(
 		args = append(args, "-progress", "pipe:1")
 		progressChan := make(chan string)
 		errChan := make(chan error, 1)
+		var usage *executor.Usage
 
 		go func() {
-			_, err := exec.ExecuteWithProgress(ctx, progressChan, "ffmpeg", args...)
+			var err error
+			_, usage, err = exec.ExecuteWithProgress(ctx, progressChan, "ffmpeg", args...)
 			errChan <- err
 		}()
 
@@ -157,16 +159,17 @@ func EncodeHLSCMAFWithExecutor(
 		}
 
 		if err := <-errChan; err != nil {
-			return fmt.Errorf("ffmpeg HLS failed: %w", err)
+			return nil, fmt.Errorf("ffmpeg HLS failed: %w", err)
 		}
+		return usage, nil
 	} else {
-		_, err := exec.Execute(ctx, "ffmpeg", args...)
+		_, usage, err := exec.Execute(ctx, "ffmpeg", args...)
 		if err != nil {
-			return fmt.Errorf("ffmpeg HLS failed: %w", err)
+			return nil, fmt.Errorf("ffmpeg HLS failed: %w", err)
 		}
+		return usage, nil
 	}
 
-	return nil
 }
 
 // ---------- FILTER GRAPH ----------

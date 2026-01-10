@@ -51,15 +51,16 @@ func main() {
 
 	// 3. Execute encoding with options
 	// We use 4 threads and set the log level to warning to keep the console clean.
-	err = mosaic.EncodeHls(context.Background(), job,
-		mosaic.WithThreads(4),
-		mosaic.WithLogLevel("warning"),
-	)
+	stats, err := mosaic.EncodeHls(context.Background(), job, mosaic.WithLogLevel("warning"))
 
 	fmt.Println() // New line after progress reporting
 
 	if err != nil {
 		log.Fatalf("❌ Encoding failed: %v", err)
+	}
+
+	if stats != nil {
+		fmt.Printf("User Time: %f, System Time: %f, Max Memory: %d\n", stats.UserTime, stats.SystemTime, stats.MaxMemory)
 	}
 
 	duration := time.Since(start)
