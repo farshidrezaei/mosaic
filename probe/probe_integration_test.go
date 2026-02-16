@@ -147,6 +147,73 @@ func TestInputWithExecutor(t *testing.T) {
 	}
 }
 
+func TestInputWithExecutorOrientation(t *testing.T) {
+	tests := []struct {
+		name         string
+		videoJSON    string
+		wantRotation int
+		wantPortrait bool
+		wantDispW    int
+		wantDispH    int
+	}{
+		{
+			name:         "rotation in side_data_list",
+			videoJSON:    `{"streams":[{"width":1920,"height":1080,"avg_frame_rate":"30/1","side_data_list":[{"rotation":90}]}]}`,
+			wantRotation: 90,
+			wantPortrait: true,
+			wantDispW:    1080,
+			wantDispH:    1920,
+		},
+		{
+			name:         "rotation in tags",
+			videoJSON:    `{"streams":[{"width":1920,"height":1080,"avg_frame_rate":"30/1","tags":{"rotate":"-90"}}]}`,
+			wantRotation: 270,
+			wantPortrait: true,
+			wantDispW:    1080,
+			wantDispH:    1920,
+		},
+		{
+			name:         "natural portrait without rotation",
+			videoJSON:    `{"streams":[{"width":720,"height":1280,"avg_frame_rate":"30/1"}]}`,
+			wantRotation: 0,
+			wantPortrait: true,
+			wantDispW:    720,
+			wantDispH:    1280,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			customMock := &customMockExecutor{
+				videoResponse: executor.MockResponse{
+					Output: []byte(tt.videoJSON),
+				},
+				audioResponse: executor.MockResponse{
+					Output: []byte(""),
+				},
+			}
+
+			got, err := InputWithExecutor(context.Background(), "test.mp4", customMock)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if got.Rotation != tt.wantRotation {
+				t.Errorf("Rotation: got %d, want %d", got.Rotation, tt.wantRotation)
+			}
+			if got.IsPortrait() != tt.wantPortrait {
+				t.Errorf("IsPortrait: got %v, want %v", got.IsPortrait(), tt.wantPortrait)
+			}
+			if got.DisplayWidth() != tt.wantDispW {
+				t.Errorf("DisplayWidth: got %d, want %d", got.DisplayWidth(), tt.wantDispW)
+			}
+			if got.DisplayHeight() != tt.wantDispH {
+				t.Errorf("DisplayHeight: got %d, want %d", got.DisplayHeight(), tt.wantDispH)
+			}
+		})
+	}
+}
+
 // customMockExecutor handles the two sequential calls (video probe, audio probe)
 type customMockExecutor struct {
 	videoResponse executor.MockResponse

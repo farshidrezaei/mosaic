@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 
@@ -20,6 +21,29 @@ type VideoInfo struct {
 	FPS float64
 	// HasAudio is true if the video file contains at least one audio stream.
 	HasAudio bool
+	// Rotation is the normalized clockwise rotation in degrees (0, 90, 180, 270).
+	Rotation int
+}
+
+// DisplayWidth returns the effective display width after applying rotation metadata.
+func (v VideoInfo) DisplayWidth() int {
+	if v.Rotation%180 != 0 {
+		return v.Height
+	}
+	return v.Width
+}
+
+// DisplayHeight returns the effective display height after applying rotation metadata.
+func (v VideoInfo) DisplayHeight() int {
+	if v.Rotation%180 != 0 {
+		return v.Width
+	}
+	return v.Height
+}
+
+// IsPortrait reports whether the video is portrait in display orientation.
+func (v VideoInfo) IsPortrait() bool {
+	return v.DisplayHeight() > v.DisplayWidth()
 }
 
 // Input returns technical metadata for the given video file or URL.
@@ -34,7 +58,7 @@ func InputWithExecutor(ctx context.Context, input string, exec executor.CommandE
 	args := []string{
 		"-v", "error",
 		"-select_streams", "v:0",
-		"-show_entries", "stream=width,height,avg_frame_rate",
+		"-show_entries", "stream=width,height,avg_frame_rate:stream_tags=rotate:stream_side_data=rotation",
 		"-of", "json",
 		input,
 	}
@@ -48,6 +72,12 @@ func InputWithExecutor(ctx context.Context, input string, exec executor.CommandE
 			FPS    string `json:"avg_frame_rate"`
 			Width  int    `json:"width"`
 			Height int    `json:"height"`
+			Tags   struct {
+				Rotate string `json:"rotate"`
+			} `json:"tags"`
+			SideDataList []struct {
+				Rotation float64 `json:"rotation"`
+			} `json:"side_data_list"`
 		} `json:"streams"`
 	}
 
@@ -63,6 +93,10 @@ func InputWithExecutor(ctx context.Context, input string, exec executor.CommandE
 		Width:  data.Streams[0].Width,
 		Height: data.Streams[0].Height,
 		FPS:    parseFPS(data.Streams[0].FPS),
+		Rotation: detectRotation(
+			data.Streams[0].Tags.Rotate,
+			data.Streams[0].SideDataList,
+		),
 	}
 
 	// audio check
@@ -92,4 +126,28 @@ func parseFPS(rate string) float64 {
 		return 30
 	}
 	return n / d
+}
+
+func detectRotation(tagRotate string, sideData []struct {
+	Rotation float64 `json:"rotation"`
+}) int {
+	for _, sd := range sideData {
+		return normalizeRotation(int(math.Round(sd.Rotation)))
+	}
+
+	if strings.TrimSpace(tagRotate) != "" {
+		if r, err := strconv.Atoi(strings.TrimSpace(tagRotate)); err == nil {
+			return normalizeRotation(r)
+		}
+	}
+
+	return 0
+}
+
+func normalizeRotation(deg int) int {
+	deg = deg % 360
+	if deg < 0 {
+		deg += 360
+	}
+	return deg
 }
