@@ -12,52 +12,52 @@ import (
 )
 
 func main() {
-	// This example demonstrates advanced DASH encoding with:
-	// 1. Low-latency live profile
-	// 2. Hardware acceleration (NVENC)
-	// 3. Custom progress reporting
-	// 4. Thread optimization
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("failed to get current directory: %v", err)
+	}
 
-	cwd, _ := os.Getwd()
 	inputPath := filepath.Join(cwd, "input.mp4")
 	outputDir := filepath.Join(cwd, "output", "dash_advanced")
 
 	if _, err := os.Stat(inputPath); os.IsNotExist(err) {
-		log.Printf("⚠️  Warning: %s not found. Please place a video file named 'input.mp4' in the current directory.", inputPath)
+		log.Printf("input file not found: %s", inputPath)
+		log.Printf("place a video file named input.mp4 in %s", cwd)
 		return
 	}
 
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		log.Fatalf("Failed to create output directory: %v", err)
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
+		log.Fatalf("failed to create output directory: %v", err)
 	}
 
 	job := mosaic.Job{
 		Input:     inputPath,
 		OutputDir: outputDir,
-		Profile:   mosaic.ProfileLive, // Live profile uses 2-second segments for lower latency
+		Profile:   mosaic.ProfileLive,
 		ProgressHandler: func(info mosaic.ProgressInfo) {
-			fmt.Printf("\r📦 DASH Encoding: %.1f%% | Time: %s | Speed: %s",
-				info.Percentage, info.CurrentTime, info.Speed)
+			fmt.Printf("\rtime=%s speed=%s bitrate=%s", info.CurrentTime, info.Speed, info.Bitrate)
 		},
 	}
 
-	fmt.Printf("🎬 Starting Advanced DASH encoding for: %s\n", inputPath)
+	fmt.Printf("starting DASH encoding: %s\n", inputPath)
 	start := time.Now()
 
-	// Execute DASH encoding with advanced options
-	_, err := mosaic.EncodeDash(context.Background(), job,
-		mosaic.WithNVENC(),    // Use NVIDIA hardware acceleration
-		mosaic.WithThreads(0), // 0 means auto-detect optimal thread count
+	usage, err := mosaic.EncodeDash(
+		context.Background(),
+		job,
+		mosaic.WithNVENC(),
+		mosaic.WithThreads(0),
 		mosaic.WithLogLevel("warning"),
 	)
-
 	fmt.Println()
-
 	if err != nil {
-		log.Fatalf("❌ DASH Encoding failed: %v", err)
+		log.Fatalf("DASH encoding failed: %v", err)
 	}
 
-	duration := time.Since(start)
-	fmt.Printf("✅ DASH Encoding completed in %v!\n", duration.Round(time.Second))
-	fmt.Printf("📂 Output available at: %s\n", outputDir)
+	if usage != nil {
+		fmt.Printf("usage: user=%.2fs system=%.2fs maxrss=%d\n", usage.UserTime, usage.SystemTime, usage.MaxMemory)
+	}
+
+	fmt.Printf("completed in %s\n", time.Since(start).Round(time.Second))
+	fmt.Printf("output: %s\n", outputDir)
 }

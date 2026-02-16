@@ -1,70 +1,72 @@
 # Contributing to Mosaic
 
-First off, thanks for taking the time to contribute! 🎉
+Thanks for contributing.
 
-The following is a set of guidelines for contributing to Mosaic. These are mostly guidelines, not rules. Use your best judgment, and feel free to propose changes to this document in a pull request.
+## Development Setup
 
-## 🛠️ Development Setup
-
-1. **Fork the repo** and clone it locally.
-2. **Install Go** (1.20+).
-3. **Install FFmpeg** (required for integration tests).
-   ```bash
-   # macOS
-   brew install ffmpeg
-
-   # Ubuntu/Debian
-   sudo apt install ffmpeg
-   ```
-
-## 🧪 Running Tests
-
-We strive for **100% test coverage**. Please ensure all tests pass before submitting a PR.
+1. Fork and clone.
+2. Install Go (`1.25+`).
+3. Install FFmpeg/FFprobe.
 
 ```bash
-# Run all tests
+# macOS
+brew install ffmpeg
+
+# Ubuntu/Debian
+sudo apt install ffmpeg
+```
+
+## Build and Test
+
+```bash
+# Build all packages
+go build ./...
+
+# Run tests
 go test ./...
 
-# Run with coverage
-go test ./... -cover
+# Coverage (if your environment blocks default build cache, override it)
+GOCACHE=/tmp/go-build go test ./... -cover
 
-# Run linter
+# Lint (if installed)
 golangci-lint run
 ```
 
-## 📝 Code Style
+## Code Guidelines
 
-- Follow standard Go conventions (use `gofmt`).
-- **Use keyed fields for struct literals** (e.g., `User{Name: "Alice"}` instead of `User{"Alice"}`).
-- Exported functions and types **must** have comments (for Godoc).
-- Keep packages small and focused.
-- **Use structured logging** (`log/slog`) instead of `fmt.Printf`.
-- **Update the Changelog**: Add a brief description of your changes to the `[Unreleased]` section of `CHANGELOG.md`.
+- Follow standard Go style and run `gofmt`.
+- Keep packages focused and avoid circular dependencies.
+- Add/adjust tests for behavior changes.
+- Preserve executor-based testability (avoid hard-coding shell calls in business logic).
+- Keep exported types/functions documented.
 
-## 📝 Changelog Management
+## Documentation Freshness Policy
 
-We follow the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) format. Please ensure your PR includes an update to the `CHANGELOG.md` file under the appropriate category:
-- `Added` for new features.
-- `Changed` for changes in existing functionality.
-- `Deprecated` for soon-to-be removed features.
-- `Removed` for now removed features.
-- `Fixed` for any bug fixes.
-- `Security` in case of vulnerabilities.
+To keep docs up to date, every behavior/API change should update Markdown in the same PR.
 
-## 🚀 Submitting a Pull Request
+Required checks before merge:
 
-1. Create a new branch: `git checkout -b my-feature-branch`
-2. Make your changes and write tests.
-3. Ensure `go test ./...` passes.
-4. Push to your fork and submit a Pull Request.
-5. Provide a clear description of what you changed and why.
+1. `README.md` reflects public API and actual behavior.
+2. `STRUCTURE.md` reflects package/file layout and runtime flow.
+3. `CHANGELOG.md` has an `[Unreleased]` entry.
+4. `ROADMAP.md` moves completed roadmap items to `Done`.
+5. Commands in docs are copy-paste runnable.
 
-## 🐛 Reporting Bugs
+If docs are intentionally unchanged, state why in the PR description.
 
-Open an issue with:
-- A clear title.
-- Steps to reproduce.
-- Expected vs. actual behavior.
-- Your environment (OS, Go version, FFmpeg version).
+## Pull Request Checklist
 
-Thanks for helping make Mosaic better! ❤️
+1. Create a branch.
+2. Implement change and tests.
+3. Run build/tests/lint.
+4. Update docs + changelog.
+5. Submit PR with clear scope and reasoning.
+
+## Reporting Issues
+
+Please include:
+
+- reproducible steps
+- expected vs actual behavior
+- OS, Go version, FFmpeg version
+- sample command/logs (when relevant)

@@ -1,18 +1,23 @@
-# 🚀 Mosaic Roadmap to Stardom
+# Mosaic Roadmap
 
-To make `mosaic` the go-to Go package for video encoding, focus on **Developer Experience (DX)**, **Performance**, and **Modern Features**.
+## Done
 
-## ✅ Done
+- [x] HLS + DASH CMAF pipelines
+- [x] Functional options for threads/GPU/logging
+- [x] Progress callback support
+- [x] Hardware acceleration modes (NVENC, VAAPI, VideoToolbox)
+- [x] Orientation-aware probing and ladder selection
+- [x] Executor abstraction with mock-driven tests
 
-- [x] **Hardware Acceleration**: Support for NVIDIA NVENC, Intel/AMD VAAPI, and Apple VideoToolbox.
-- [x] **Progress Reporting**: Real-time updates on encoding status.
-- [x] **Functional Options**: Flexible configuration for threads, GPU, and logging.
-- [x] **Structured Logging**: Integrated with `log/slog`.
-- [x] **100% Test Coverage**: Comprehensive test suite with mocked dependencies.
+## Next
 
-## 🚀 Future Roadmap
+- [ ] Add modern codec options (HEVC and AV1)
+- [ ] Add thumbnail/sprite generation helpers
+- [ ] Add cloud output hooks (S3/GCS streaming upload)
+- [ ] Add DRM integration surfaces (Widevine/FairPlay)
+- [ ] Improve progress model with computed percentage
+- [ ] Expand integration fixtures (`testdata/` sample assets)
 
-- [ ] **Modern Codecs**: Add H.265 (HEVC) and AV1 support.
-- [ ] **Thumbnail Generation**: Auto-generate a sprite sheet or VTT thumbnails for the player seek bar.
-- [ ] **Cloud Hooks**: Interfaces to upload segments directly to S3/GCS as they are created.
-- [ ] **DRM Support**: Basic integration for Widevine/FairPlay encryption.
+## Ongoing Maintenance
+
+- Keep all Markdown docs synchronized with code changes in every PR.

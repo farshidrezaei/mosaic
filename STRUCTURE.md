@@ -1,147 +1,77 @@
 # Mosaic Package Structure
 
-## Current Structure ✅
+This document reflects the current repository/package layout and runtime flow.
 
-```
+## Top-Level Layout
+
+```text
 mosaic/
-├── .golangci.yml            # Linter configuration
-├── config/                  # Encoding profiles (VOD, LIVE)
+├── .github/workflows/go.yml      # CI (build/test/lint)
+├── .golangci.yml                 # linter config
+├── encode.go                     # public orchestration API
+├── job.go                        # public Job/Profile/Progress types
+├── config/
 │   ├── profiles.go
 │   └── profiles_test.go
-│
-├── encoder/                 # FFmpeg encoding logic
-│   ├── common.go           # Shared utilities (GOP, var_stream_map)
-│   ├── hls_cmaf.go         # HLS encoder
-│   ├── dash_cmaf.go        # DASH encoder
-│   └── *_test.go           # Tests
-│
-├── internal/                # Internal utilities (not exported)
-│   └── executor/           # Command execution abstraction
-│       ├── executor.go     # Interface (Execute, ExecuteWithProgress) & RealCommandExecutor
-│       ├── mock.go         # MockCommandExecutor
-│       └── executor_test.go
-│
-├── ladder/                  # Rendition ladder building
-│   ├── types.go            # Rendition struct
-│   ├── ladder.go           # Build logic
+├── probe/
+│   ├── probe.go
+│   ├── probe_test.go
+│   └── probe_integration_test.go
+├── ladder/
+│   ├── types.go
+│   ├── ladder.go
 │   └── ladder_test.go
-│
-├── optimize/                # Bitrate optimization
-│   ├── cost.go             # Bitrate capping
-│   ├── optimize.go         # Apply & trim
+├── optimize/
+│   ├── cost.go
+│   ├── optimize.go
 │   └── optimize_test.go
-│
-├── probe/                   # Video analysis
-│   ├── probe.go            # FFprobe wrapper
-│   └── *_test.go           # Tests
-│
-├── encode.go                # Main API (EncodeHls, EncodeDash)
-├── job.go                   # Job & Profile types
-├── go.mod                   # Module definition
-├── LICENSE                  # MIT License
-├── README.md                # Documentation
-├── examples/                # Usage examples
-│   ├── simple_hls/          # Basic HLS encoding
-│   ├── advanced_dash/       # Advanced DASH with progress and GPU
-│   └── multi_gpu/           # Hardware acceleration examples
-└── .gitignore              # Git ignore rules
+├── encoder/
+│   ├── common.go
+│   ├── hls_cmaf.go
+│   ├── dash_cmaf.go
+│   └── *_test.go
+├── internal/executor/
+│   ├── executor.go
+│   ├── mock.go
+│   └── executor_test.go
+├── examples/
+│   ├── simple_hls/
+│   ├── advanced_dash/
+│   └── multi_gpu/
+├── README.md
+├── CONTRIBUTING.md
+├── ROADMAP.md
+└── CHANGELOG.md
 ```
 
-## Design Principles ✅
+## Runtime Flow
 
-1. **Single Responsibility**: Each package has one clear purpose
-2. **Dependency Direction**: Dependencies flow inward (no circular deps)
-3. **Internal Isolation**: `internal/` hides implementation details
-4. **Test Co-location**: Tests live next to source files
-5. **Flat Structure**: Avoid deep nesting (max 2 levels)
-
-## Package Dependencies
-
-```
-                    ┌─────────┐
-                    │  Job    │
-                    └────┬────┘
-                         │
-                    ┌────▼────┐
-                    │ encode  │
-                    └────┬────┘
-                         │
-        ┌────────────────┼────────────────┐
-        │                │                │
-   ┌────▼────┐      ┌────▼────┐     ┌────▼────┐
-   │  probe  │      │ ladder  │     │ encoder │
-   └────┬────┘      └────┬────┘     └────┬────┘
-        │                │                │
-        │           ┌────▼────┐           │
-        │           │optimize │           │
-        │           └─────────┘           │
-        │                                 │
-        └────────────┬───────────────────┬┘
-                     │                   │
-                ┌────▼────┐         ┌────▼────┐
-                │executor │         │ config  │
-                └─────────┘         └─────────┘
+```text
+Job
+ └─ encode.go
+    ├─ probe.InputWithExecutor
+    │  └─ ffprobe (video stream + audio stream)
+    │     └─ width/height/fps/audio + orientation metadata
+    ├─ ladder.Build
+    │  └─ base ladder from effective display dimensions
+    ├─ optimize.Apply
+    │  └─ bitrate cap + rung trimming
+    └─ encoder.Encode{HLS|DASH}CMAFWithExecutor
+       └─ ffmpeg command construction + execution
 ```
 
-## Recommendations
+## Package Responsibilities
 
-### Current Status: ✅ **GOOD**
-Your structure follows Go best practices and is well-organized!
+- `probe`: source introspection via FFprobe.
+- `ladder`: initial rendition ladder generation.
+- `optimize`: post-processing of ladder bitrates/rungs.
+- `encoder`: FFmpeg command assembly for HLS/DASH CMAF.
+- `internal/executor`: command execution abstraction and mocks.
+- `config`: profile and GPU backend constants.
+- root package (`mosaic`): user-facing API and option wiring.
 
-### Minor Improvements (Optional)
+## Notes
 
-#### 1. Add Examples Directory (Future)
-```
-examples/
-├── basic_hls/
-│   └── main.go
-└── advanced_dash/
-    └── main.go
-```
-
-#### 3. Add Documentation Directory (Future)
-```
-docs/
-├── architecture.md
-├── api.md
-└── contributing.md
-```
-
-#### 4. Add Test Fixtures (When Needed)
-```
-testdata/
-├── videos/
-│   └── sample.mp4
-└── expected/
-    └── manifest.mpd
-```
-
-## Clean Code Checklist ✅
-
-- [x] Clear package names (config, encoder, probe, etc.)
-- [x] Single responsibility per package
-- [x] No circular dependencies
-- [x] Internal packages for implementation details
-- [x] Tests colocated with source
-- [x] Meaningful file names
-- [x] Consistent naming conventions
-- [x] Documentation (README.md)
-- [x] Automated Linting (.golangci.yml)
-- [x] Git ignore for artifacts
-
-## File Naming Conventions ✅
-
-- **Source**: `noun.go` (e.g., `probe.go`, `encoder.go`)
-- **Types**: `types.go` for type definitions
-- **Tests**: `*_test.go` colocated with source
-- **Internal**: Use `internal/` for private packages
-
-## What Makes This Structure Clean
-
-1. **Predictable**: Easy to find where functionality lives
-2. **Testable**: Every package has comprehensive tests
-3. **Maintainable**: Clear boundaries, low coupling
-4. **Scalable**: Easy to add new encoders or optimizers  
-5. **Standard**: Follows Go community conventions
-
-Your structure is **production-ready**! 🚀
+- Dependency direction is intentionally simple: public API orchestrates lower-level packages.
+- Test files are colocated with production code.
+- Orientation support is handled during probing and ladder selection.

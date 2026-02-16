@@ -11,51 +11,66 @@ import (
 )
 
 func main() {
-	// This example demonstrates how to use different hardware acceleration backends.
-	// Note: You must have the corresponding hardware and FFmpeg support installed.
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("failed to get current directory: %v", err)
+	}
 
-	cwd, _ := os.Getwd()
 	inputPath := filepath.Join(cwd, "input.mp4")
-	outputDir := filepath.Join(cwd, "output", "multi_gpu")
+	baseOutputDir := filepath.Join(cwd, "output", "multi_gpu")
 
 	if _, err := os.Stat(inputPath); os.IsNotExist(err) {
-		log.Printf("⚠️  Warning: %s not found.", inputPath)
+		log.Printf("input file not found: %s", inputPath)
+		log.Printf("place a video file named input.mp4 in %s", cwd)
 		return
 	}
 
-	_ = os.MkdirAll(outputDir, 0755)
-
-	job := mosaic.Job{
-		Input:     inputPath,
-		OutputDir: outputDir,
-		Profile:   mosaic.ProfileLive, // Live profile for low-latency
-		ProgressHandler: func(info mosaic.ProgressInfo) {
-			fmt.Printf("\rProgress: %.1f%% (Speed: %s)", info.Percentage, info.Speed)
-		},
+	if err := os.MkdirAll(baseOutputDir, 0o755); err != nil {
+		log.Fatalf("failed to create output directory: %v", err)
 	}
 
-	fmt.Println("🚀 Starting Multi-GPU Hardware Acceleration Example")
-
-	// Example 1: NVIDIA NVENC
-	fmt.Println("\n--- Using NVIDIA NVENC ---")
-	_, err := mosaic.EncodeHls(context.Background(), job, mosaic.WithNVENC())
-	if err != nil {
-		fmt.Printf("NVENC failed (likely no hardware): %v\n", err)
+	backends := []struct {
+		name string
+		dir  string
+		opt  mosaic.Option
+	}{
+		{name: "NVENC", dir: "nvenc", opt: mosaic.WithNVENC()},
+		{name: "VAAPI", dir: "vaapi", opt: mosaic.WithVAAPI()},
+		{name: "VideoToolbox", dir: "videotoolbox", opt: mosaic.WithVideoToolbox()},
 	}
 
-	// Example 2: Intel/AMD VAAPI
-	fmt.Println("\n--- Using VAAPI ---")
-	_, err = mosaic.EncodeHls(context.Background(), job, mosaic.WithVAAPI())
-	if err != nil {
-		fmt.Printf("VAAPI failed (likely no hardware): %v\n", err)
-	}
+	for _, b := range backends {
+		outDir := filepath.Join(baseOutputDir, b.dir)
+		if err := os.MkdirAll(outDir, 0o755); err != nil {
+			fmt.Printf("%s: skip, cannot create output dir: %v\n", b.name, err)
+			continue
+		}
 
-	// Example 3: Apple VideoToolbox
-	fmt.Println("\n--- Using VideoToolbox ---")
-	_, err = mosaic.EncodeHls(context.Background(), job, mosaic.WithVideoToolbox())
-	if err != nil {
-		fmt.Printf("VideoToolbox failed (likely no hardware): %v\n", err)
-	}
+		job := mosaic.Job{
+			Input:     inputPath,
+			OutputDir: outDir,
+			Profile:   mosaic.ProfileLive,
+			ProgressHandler: func(info mosaic.ProgressInfo) {
+				fmt.Printf("\r[%s] time=%s speed=%s", b.name, info.CurrentTime, info.Speed)
+			},
+		}
 
-	fmt.Println("\n\n✅ Multi-GPU example finished.")
+		fmt.Printf("\n--- %s ---\n", b.name)
+		usage, err := mosaic.EncodeHls(
+			context.Background(),
+			job,
+			b.opt,
+			mosaic.WithLogLevel("warning"),
+		)
+		fmt.Println()
+		if err != nil {
+			fmt.Printf("%s failed: %v\n", b.name, err)
+			continue
+		}
+
+		if usage != nil {
+			fmt.Printf("%s usage: user=%.2fs system=%.2fs maxrss=%d\n", b.name, usage.UserTime, usage.SystemTime, usage.MaxMemory)
+		}
+		fmt.Printf("%s output: %s\n", b.name, outDir)
+	}
 }
