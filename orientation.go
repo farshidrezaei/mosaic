@@ -18,11 +18,11 @@ type orientationProbeResponse struct {
 }
 
 type orientationProbeStream struct {
-	Width        int                        `json:"width"`
-	Height       int                        `json:"height"`
 	CodecName    string                     `json:"codec_name"`
 	Tags         map[string]string          `json:"tags"`
 	SideDataList []orientationProbeSideData `json:"side_data_list"`
+	Width        int                        `json:"width"`
+	Height       int                        `json:"height"`
 }
 
 type orientationProbeSideData struct {
@@ -30,9 +30,9 @@ type orientationProbeSideData struct {
 }
 
 type orientationMetadata struct {
+	CodecName string
 	Width     int
 	Height    int
-	CodecName string
 	Rotation  int
 }
 
@@ -61,18 +61,18 @@ func normalizeRotationWithExecutor(
 
 	filter, shouldRotate := rotationFilter(meta.Rotation)
 	if !shouldRotate {
-		tmpOutput, cleanup, err := prepareTempOutput(outputPath)
-		if err != nil {
-			return err
+		tmpOutput, cleanup, prepErr := prepareTempOutput(outputPath)
+		if prepErr != nil {
+			return prepErr
 		}
 		defer cleanup()
 
 		args := buildRemuxFFmpegArgs(inputPath, tmpOutput)
-		if _, _, err := exec.Execute(ctx, "ffmpeg", args...); err != nil {
-			return fmt.Errorf("normalize orientation: ffmpeg remux failed: %w", err)
+		if _, _, execErr := exec.Execute(ctx, "ffmpeg", args...); execErr != nil {
+			return fmt.Errorf("normalize orientation: ffmpeg remux failed: %w", execErr)
 		}
-		if err := os.Rename(tmpOutput, outputPath); err != nil {
-			return fmt.Errorf("finalize remux output: %w", err)
+		if renameErr := os.Rename(tmpOutput, outputPath); renameErr != nil {
+			return fmt.Errorf("finalize remux output: %w", renameErr)
 		}
 		return nil
 	}

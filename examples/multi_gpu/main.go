@@ -30,9 +30,9 @@ func main() {
 	}
 
 	backends := []struct {
+		opt  mosaic.Option
 		name string
 		dir  string
-		opt  mosaic.Option
 	}{
 		{name: "NVENC", dir: "nvenc", opt: mosaic.WithNVENC()},
 		{name: "VAAPI", dir: "vaapi", opt: mosaic.WithVAAPI()},

@@ -15,8 +15,8 @@ func TestParseOrientationProbeOutput(t *testing.T) {
 	tests := []struct {
 		name         string
 		json         string
-		wantRotation int
 		wantCodec    string
+		wantRotation int
 		wantErr      bool
 	}{
 		{
@@ -66,8 +66,8 @@ func TestParseOrientationProbeOutput(t *testing.T) {
 func TestRotationFilter(t *testing.T) {
 	tests := []struct {
 		name       string
-		rotation   int
 		wantFilter string
+		rotation   int
 		wantOK     bool
 	}{
 		{name: "90", rotation: 90, wantFilter: "transpose=1", wantOK: true},
@@ -172,14 +172,14 @@ func assertContainsArg(t *testing.T, args []string, want string) {
 }
 
 type orientationMockExecutor struct {
-	ffprobeOutputs     [][]byte
-	ffprobeErr         error
-	ffmpegErrors       []error
-	createFFmpegOutput bool
-
-	ffprobeCalls   int
-	ffmpegCalls    int
+	ffprobeErr     error
+	ffprobeOutputs [][]byte
+	ffmpegErrors   []error
 	lastFFmpegArgs []string
+
+	createFFmpegOutput bool
+	ffprobeCalls       int
+	ffmpegCalls        int
 }
 
 func (m *orientationMockExecutor) Execute(ctx context.Context, name string, args ...string) ([]byte, *executor.Usage, error) {

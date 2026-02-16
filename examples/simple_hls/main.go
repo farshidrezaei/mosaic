@@ -20,14 +20,14 @@ func main() {
 	inputPath := filepath.Join(cwd, "input.mp4")
 	outputDir := filepath.Join(cwd, "output", "hls_simple")
 
-	if _, err := os.Stat(inputPath); os.IsNotExist(err) {
+	if _, statErr := os.Stat(inputPath); os.IsNotExist(statErr) {
 		log.Printf("input file not found: %s", inputPath)
 		log.Printf("place a video file named input.mp4 in %s", cwd)
 		return
 	}
 
-	if err := os.MkdirAll(outputDir, 0o755); err != nil {
-		log.Fatalf("failed to create output directory: %v", err)
+	if mkdirErr := os.MkdirAll(outputDir, 0o755); mkdirErr != nil {
+		log.Fatalf("failed to create output directory: %v", mkdirErr)
 	}
 
 	job := mosaic.Job{

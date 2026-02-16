@@ -69,15 +69,15 @@ func InputWithExecutor(ctx context.Context, input string, exec executor.CommandE
 
 	var data struct {
 		Streams []struct {
-			FPS    string `json:"avg_frame_rate"`
-			Width  int    `json:"width"`
-			Height int    `json:"height"`
-			Tags   struct {
+			FPS  string `json:"avg_frame_rate"`
+			Tags struct {
 				Rotate string `json:"rotate"`
 			} `json:"tags"`
 			SideDataList []struct {
 				Rotation float64 `json:"rotation"`
 			} `json:"side_data_list"`
+			Width  int `json:"width"`
+			Height int `json:"height"`
 		} `json:"streams"`
 	}
 
