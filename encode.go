@@ -2,8 +2,12 @@ package mosaic
 
 import (
 	"context"
+	"fmt"
 
 	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/farshidrezaei/mosaic/config"
 	"github.com/farshidrezaei/mosaic/encoder"
@@ -18,10 +22,11 @@ import (
 type Option func(*options)
 
 type options struct {
-	logger   *slog.Logger
-	gpu      config.GPUType
-	logLevel string
-	threads  int
+	logger               *slog.Logger
+	gpu                  config.GPUType
+	logLevel             string
+	threads              int
+	normalizeOrientation bool
 }
 
 func defaultOptions() *options {
@@ -30,6 +35,18 @@ func defaultOptions() *options {
 		gpu:      "",
 		logLevel: "warning",
 		logger:   slog.Default(),
+	}
+}
+
+// WithNormalizeOrientation enables pre-encoding orientation normalization.
+// If called without arguments, it enables normalization.
+func WithNormalizeOrientation(enabled ...bool) Option {
+	return func(o *options) {
+		if len(enabled) == 0 {
+			o.normalizeOrientation = true
+			return
+		}
+		o.normalizeOrientation = enabled[0]
 	}
 }
 
@@ -137,14 +154,23 @@ func EncodeHlsWithExecutor(ctx context.Context, job Job, exec executor.CommandEx
 		opt(o)
 	}
 
-	info, profile, l, err := initializeWithExecutor(ctx, job, exec, o)
+	effectiveInput, cleanupInput, err := prepareInputForEncoding(ctx, job.Input, exec, o)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanupInput()
+
+	effectiveJob := job
+	effectiveJob.Input = effectiveInput
+
+	info, profile, l, err := initializeWithExecutor(ctx, effectiveJob, exec, o)
 	if err != nil {
 		return nil, err
 	}
 	// 2. Encode
 	return encoder.EncodeHLSCMAFWithExecutor(
 		ctx,
-		job.Input,
+		effectiveInput,
 		job.OutputDir,
 		info,
 		profile,
@@ -183,14 +209,23 @@ func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandE
 		opt(o)
 	}
 
-	info, profile, l, err := initializeWithExecutor(ctx, job, exec, o)
+	effectiveInput, cleanupInput, err := prepareInputForEncoding(ctx, job.Input, exec, o)
+	if err != nil {
+		return nil, err
+	}
+	defer cleanupInput()
+
+	effectiveJob := job
+	effectiveJob.Input = effectiveInput
+
+	info, profile, l, err := initializeWithExecutor(ctx, effectiveJob, exec, o)
 	if err != nil {
 		return nil, err
 	}
 	// 2. Encode
 	return encoder.EncodeDASHCMAFWithExecutor(
 		ctx,
-		job.Input,
+		effectiveInput,
 		job.OutputDir,
 		info,
 		profile,
@@ -212,4 +247,41 @@ func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandE
 			LogLevel: o.logLevel,
 		},
 	)
+}
+
+func prepareInputForEncoding(
+	ctx context.Context,
+	inputPath string,
+	exec executor.CommandExecutor,
+	opts *options,
+) (string, func(), error) {
+	if !opts.normalizeOrientation {
+		return inputPath, func() {}, nil
+	}
+
+	tmpFile, err := os.CreateTemp(os.TempDir(), "mosaic-normalized-*"+normalizedInputExt(inputPath))
+	if err != nil {
+		return "", nil, fmt.Errorf("create temp normalized input: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	if err := tmpFile.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return "", nil, fmt.Errorf("close temp normalized input: %w", err)
+	}
+
+	cleanup := func() { _ = os.Remove(tmpPath) }
+	if err := normalizeRotationWithExecutor(ctx, inputPath, tmpPath, exec); err != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("normalize input orientation: %w", err)
+	}
+
+	return tmpPath, cleanup, nil
+}
+
+func normalizedInputExt(inputPath string) string {
+	ext := filepath.Ext(inputPath)
+	if ext == "" || strings.Contains(ext, "?") {
+		return ".mp4"
+	}
+	return ext
 }

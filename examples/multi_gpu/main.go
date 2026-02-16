@@ -59,6 +59,7 @@ func main() {
 		usage, err := mosaic.EncodeHls(
 			context.Background(),
 			job,
+			mosaic.WithNormalizeOrientation(),
 			b.opt,
 			mosaic.WithLogLevel("warning"),
 		)

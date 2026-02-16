@@ -45,6 +45,7 @@ func main() {
 	usage, err := mosaic.EncodeDash(
 		context.Background(),
 		job,
+		mosaic.WithNormalizeOrientation(),
 		mosaic.WithNVENC(),
 		mosaic.WithThreads(0),
 		mosaic.WithLogLevel("warning"),

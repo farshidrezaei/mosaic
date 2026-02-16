@@ -18,6 +18,7 @@ you.
 - Audio stream detection and conditional audio mapping
 - Progress callbacks from FFmpeg `-progress` output
 - Functional options for threads, GPU backend, log level, logger
+- Optional orientation normalization to remove rotate-metadata ambiguity across players
 - Hardware acceleration options: NVENC, VAAPI, VideoToolbox
 - Testable architecture via dependency-injected command executor
 
@@ -59,6 +60,7 @@ func main() {
 	usage, err := mosaic.EncodeHls(
 		context.Background(),
 		job,
+		mosaic.WithNormalizeOrientation(),
 		mosaic.WithThreads(4),
 		mosaic.WithNVENC(),
 		mosaic.WithLogLevel("warning"),
@@ -80,6 +82,8 @@ display dimensions when building the ladder.
 
 - Natural portrait input (for example `720x1280`) produces portrait renditions.
 - Rotated portrait metadata (for example `1920x1080` with rotation `90`) is treated as portrait for ladder decisions.
+- For consistent fullscreen behavior across mobile players, enable `WithNormalizeOrientation()` so rotated sources are
+  physically rotated and output with `rotate=0`.
 
 ## Encoding Profiles
 
@@ -119,6 +123,7 @@ func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandE
 
 func WithThreads(n int) Option
 func WithGPU(t ...config.GPUType) Option
+func WithNormalizeOrientation(enabled ...bool) Option
 func WithNVENC() Option
 func WithVAAPI() Option
 func WithVideoToolbox() Option

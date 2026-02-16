@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/farshidrezaei/mosaic/config"
@@ -197,6 +199,60 @@ func TestEncodeDashWithExecutor(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPrepareInputForEncoding(t *testing.T) {
+	t.Run("normalization disabled", func(t *testing.T) {
+		o := defaultOptions()
+		o.normalizeOrientation = false
+		mock := &orientationMockExecutor{}
+
+		got, cleanup, err := prepareInputForEncoding(context.Background(), "input.mp4", mock, o)
+		if err != nil {
+			t.Fatalf("prepareInputForEncoding() err=%v", err)
+		}
+		defer cleanup()
+
+		if got != "input.mp4" {
+			t.Fatalf("got input %q want %q", got, "input.mp4")
+		}
+		if mock.ffmpegCalls != 0 {
+			t.Fatalf("expected no ffmpeg calls, got %d", mock.ffmpegCalls)
+		}
+	})
+
+	t.Run("normalization enabled", func(t *testing.T) {
+		dir := t.TempDir()
+		inputPath := filepath.Join(dir, "in.mp4")
+		if err := os.WriteFile(inputPath, []byte("src"), 0o644); err != nil {
+			t.Fatalf("write input: %v", err)
+		}
+
+		o := defaultOptions()
+		o.normalizeOrientation = true
+		mock := &orientationMockExecutor{
+			ffprobeOutputs: [][]byte{
+				[]byte(`{"streams":[{"width":1920,"height":1080,"codec_name":"h264","side_data_list":[{"rotation":90}]}]}`),
+				[]byte(`{"streams":[{"width":1080,"height":1920,"codec_name":"h264"}]}`),
+			},
+			createFFmpegOutput: true,
+		}
+
+		got, cleanup, err := prepareInputForEncoding(context.Background(), inputPath, mock, o)
+		if err != nil {
+			t.Fatalf("prepareInputForEncoding() err=%v", err)
+		}
+		if got == inputPath {
+			t.Fatalf("expected temp normalized path, got original")
+		}
+		if _, err := os.Stat(got); err != nil {
+			t.Fatalf("expected temp output to exist: %v", err)
+		}
+		cleanup()
+		if _, err := os.Stat(got); !os.IsNotExist(err) {
+			t.Fatalf("expected temp output cleanup, stat err=%v", err)
+		}
+	})
 }
 
 // sequentialMock handles sequential ffprobe calls
