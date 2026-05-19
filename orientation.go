@@ -227,6 +227,7 @@ func buildRotateFFmpegArgs(inputPath, outputPath, encoderName, filter string) []
 		"-y",
 		"-v", "error",
 		"-noautorotate",
+		"-display_rotation:v:0", "0",
 		"-i", inputPath,
 		"-map", "0:v:0",
 		"-map", "0:a?",
@@ -242,6 +243,7 @@ func buildRemuxFFmpegArgs(inputPath, outputPath string) []string {
 	return []string{
 		"-y",
 		"-v", "error",
+		"-display_rotation:v:0", "0",
 		"-i", inputPath,
 		"-c", "copy",
 		"-metadata:s:v:0", "rotate=0",
