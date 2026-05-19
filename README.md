@@ -140,8 +140,8 @@ go test ./...
 # Coverage (environment-dependent; may require writable GOCACHE)
 GOCACHE=/tmp/go-build go test ./... -cover
 
-# Lint
-# golangci-lint run
+# Lint (required before every commit)
+golangci-lint run
 ```
 
 ## Repository Layout

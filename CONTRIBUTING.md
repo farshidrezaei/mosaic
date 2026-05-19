@@ -28,7 +28,7 @@ go test ./...
 # Coverage (if your environment blocks default build cache, override it)
 GOCACHE=/tmp/go-build go test ./... -cover
 
-# Lint (if installed)
+# Lint (required before every commit)
 golangci-lint run
 ```
 
@@ -59,8 +59,9 @@ If docs are intentionally unchanged, state why in the PR description.
 1. Create a branch.
 2. Implement change and tests.
 3. Run build/tests/lint.
-4. Update docs + changelog.
-5. Submit PR with clear scope and reasoning.
+4. Run `golangci-lint run` and ensure it passes before every commit (required for both human and AI contributors).
+5. Update docs + changelog.
+6. Submit PR with clear scope and reasoning.(if you are AI don't do this)
 
 ## Reporting Issues
 
