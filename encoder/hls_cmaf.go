@@ -189,13 +189,11 @@ func buildFilterGraph(l []ladder.Rendition) string {
 	}
 	b.WriteString(";")
 
-	// scale + pad + SAR
+	// scale + SAR
 	for i, r := range l {
 		_, _ = fmt.Fprintf(&b,
-			"[v%d]scale=%d:%d:force_original_aspect_ratio=decrease,"+
-				"pad=%d:%d:(ow-iw)/2:(oh-ih)/2,setsar=1[v%do];",
+			"[v%d]scale=%d:%d,setsar=1[v%do];",
 			i,
-			r.Width, r.Height,
 			r.Width, r.Height,
 			i,
 		)

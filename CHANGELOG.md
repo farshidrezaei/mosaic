@@ -14,6 +14,7 @@ All notable changes to this project are documented here.
 
 ### Changed
 
+- Preserved source display aspect ratio when building output ladders instead of forcing fixed 16:9 frame sizes.
 - Refreshed `README.md`, `STRUCTURE.md`, `ROADMAP.md`, and `CONTRIBUTING.md` to match current API and behavior.
 - Updated documented Go baseline to align with module declaration (`go 1.25`).
 

@@ -17,7 +17,7 @@ func TestBuildFilterGraph(t *testing.T) {
 			renditions: []ladder.Rendition{
 				{Width: 640, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
 			},
-			expected: "[0:v]split=1[v0];[v0]scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1[v0o]",
+			expected: "[0:v]split=1[v0];[v0]scale=640:360,setsar=1[v0o]",
 		},
 		{
 			name: "three renditions",
@@ -26,7 +26,7 @@ func TestBuildFilterGraph(t *testing.T) {
 				{Width: 1280, Height: 720, MaxRate: 3000, BufSize: 6000, Profile: "main", Level: "3.1"},
 				{Width: 640, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
 			},
-			expected: "[0:v]split=3[v0][v1][v2];[v0]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1[v0o];[v1]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1[v1o];[v2]scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1[v2o]",
+			expected: "[0:v]split=3[v0][v1][v2];[v0]scale=1920:1080,setsar=1[v0o];[v1]scale=1280:720,setsar=1[v1o];[v2]scale=640:360,setsar=1[v2o]",
 		},
 		{
 			name: "two renditions",
@@ -34,7 +34,7 @@ func TestBuildFilterGraph(t *testing.T) {
 				{Width: 1280, Height: 720, MaxRate: 3000, BufSize: 6000, Profile: "main", Level: "3.1"},
 				{Width: 640, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
 			},
-			expected: "[0:v]split=2[v0][v1];[v0]scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,setsar=1[v0o];[v1]scale=640:360:force_original_aspect_ratio=decrease,pad=640:360:(ow-iw)/2:(oh-ih)/2,setsar=1[v1o]",
+			expected: "[0:v]split=2[v0][v1];[v0]scale=1280:720,setsar=1[v0o];[v1]scale=640:360,setsar=1[v1o]",
 		},
 	}
 

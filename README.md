@@ -10,11 +10,12 @@ you.
 
 ## Features
 
-- Automatic ABR ladder generation (`1080p`, `720p`, `360p` profiles by source capability)
+- Automatic aspect-preserving ABR ladder generation (`1080p`, `720p`, `360p` quality rungs by source capability)
 - Ladder optimization (bitrate capping and redundant rung trimming)
 - HLS CMAF output (`master.m3u8`, variant playlists, fMP4 segments)
 - DASH CMAF output (`manifest.mpd`, init/media segments)
 - Orientation-aware ladder selection (portrait/rotated input support)
+- Source aspect-ratio preservation for square, portrait, landscape, and non-standard dimensions
 - Audio stream detection and conditional audio mapping
 - Progress callbacks from FFmpeg `-progress` output
 - Functional options for threads, GPU backend, log level, logger

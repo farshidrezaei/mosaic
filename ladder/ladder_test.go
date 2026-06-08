@@ -62,14 +62,14 @@ func TestBuild(t *testing.T) {
 			},
 		},
 		{
-			name: "240p source - no renditions",
+			name: "240p source - source-sized rendition without upscaling",
 			info: probe.VideoInfo{
 				Width:  426,
 				Height: 240,
 				FPS:    30.0,
 			},
 			expected: []Rendition{
-				{Width: 640, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
+				{Width: 426, Height: 240, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
 			},
 		},
 		{
@@ -84,20 +84,20 @@ func TestBuild(t *testing.T) {
 			},
 		},
 		{
-			name: "portrait source - portrait renditions",
+			name: "portrait source - aspect-preserving portrait renditions",
 			info: probe.VideoInfo{
 				Width:  720,
 				Height: 1280,
 				FPS:    30.0,
 			},
 			expected: []Rendition{
-				{Width: 1080, Height: 1920, MaxRate: 5200, BufSize: 10400, Profile: "main", Level: "4.0"},
-				{Width: 720, Height: 1280, MaxRate: 3000, BufSize: 6000, Profile: "main", Level: "3.1"},
-				{Width: 360, Height: 640, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
+				{Width: 608, Height: 1080, MaxRate: 5200, BufSize: 10400, Profile: "main", Level: "4.0"},
+				{Width: 404, Height: 720, MaxRate: 3000, BufSize: 6000, Profile: "main", Level: "3.1"},
+				{Width: 202, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
 			},
 		},
 		{
-			name: "rotated portrait metadata - portrait renditions",
+			name: "rotated portrait metadata - aspect-preserving portrait renditions",
 			info: probe.VideoInfo{
 				Width:    1920,
 				Height:   1080,
@@ -105,9 +105,32 @@ func TestBuild(t *testing.T) {
 				Rotation: 90,
 			},
 			expected: []Rendition{
-				{Width: 1080, Height: 1920, MaxRate: 5200, BufSize: 10400, Profile: "main", Level: "4.0"},
-				{Width: 720, Height: 1280, MaxRate: 3000, BufSize: 6000, Profile: "main", Level: "3.1"},
-				{Width: 360, Height: 640, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
+				{Width: 608, Height: 1080, MaxRate: 5200, BufSize: 10400, Profile: "main", Level: "4.0"},
+				{Width: 404, Height: 720, MaxRate: 3000, BufSize: 6000, Profile: "main", Level: "3.1"},
+				{Width: 202, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
+			},
+		},
+		{
+			name: "square source - square renditions",
+			info: probe.VideoInfo{
+				Width:  1000,
+				Height: 1000,
+				FPS:    30.0,
+			},
+			expected: []Rendition{
+				{Width: 720, Height: 720, MaxRate: 3000, BufSize: 6000, Profile: "main", Level: "3.1"},
+				{Width: 360, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
+			},
+		},
+		{
+			name: "non-standard landscape source - aspect-preserving rendition",
+			info: probe.VideoInfo{
+				Width:  1280,
+				Height: 718,
+				FPS:    25.0,
+			},
+			expected: []Rendition{
+				{Width: 642, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
 			},
 		},
 	}
