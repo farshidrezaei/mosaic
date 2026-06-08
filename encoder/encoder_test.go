@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/farshidrezaei/mosaic/config"
@@ -100,7 +102,7 @@ func TestEncodeHLSCMAFWithExecutor(t *testing.T) {
 				progressCalled = true
 			}
 
-			usage, err := EncodeHLSCMAFWithExecutor(context.Background(), "input.mp4", "/output", tt.info, tt.profile, tt.ladder, mock, progressHandler, opts)
+			usage, err := EncodeHLSCMAFWithExecutor(context.Background(), "input.mp4", t.TempDir(), tt.info, tt.profile, tt.ladder, mock, progressHandler, opts)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("EncodeHLSCMAFWithExecutor() error = %v, wantErr %v", err, tt.wantErr)
@@ -218,7 +220,7 @@ func TestEncodeDASHCMAFWithExecutor(t *testing.T) {
 			usage, err := EncodeDASHCMAFWithExecutor(
 				context.Background(),
 				"input",
-				"out",
+				t.TempDir(),
 				tt.info,
 				tt.profile,
 				tt.ladder,
@@ -283,7 +285,7 @@ func TestEncodeHLSCMAF(t *testing.T) {
 	info := probe.VideoInfo{Width: 1920, Height: 1080, FPS: 30, HasAudio: true}
 	l := []ladder.Rendition{{Width: 1920, Height: 1080, MaxRate: 5000, BufSize: 10000, Profile: "main", Level: "4.0"}}
 
-	_, err := EncodeHLSCMAF(context.Background(), "input", "out", info, config.VOD, l)
+	_, err := EncodeHLSCMAF(context.Background(), "input", t.TempDir(), info, config.VOD, l)
 	if err != nil {
 		t.Errorf("EncodeHLSCMAF failed: %v", err)
 	}
@@ -302,7 +304,7 @@ func TestEncodeDASHCMAF(t *testing.T) {
 	info := probe.VideoInfo{Width: 1920, Height: 1080, FPS: 30, HasAudio: true}
 	l := []ladder.Rendition{{Width: 1920, Height: 1080, MaxRate: 5000, BufSize: 10000, Profile: "main", Level: "4.0"}}
 
-	_, err := EncodeDASHCMAF(context.Background(), "input", "out", info, config.VOD, l)
+	_, err := EncodeDASHCMAF(context.Background(), "input", t.TempDir(), info, config.VOD, l)
 	if err != nil {
 		t.Errorf("EncodeDASHCMAF failed: %v", err)
 	}
@@ -321,7 +323,7 @@ func TestEncodeHLSCMAFWithExecutor_Progress(t *testing.T) {
 	l := []ladder.Rendition{{Width: 1920, Height: 1080}}
 
 	var progressCalled bool
-	usage, err := EncodeHLSCMAFWithExecutor(context.Background(), "in.mp4", "out", info, profile, l, mock, func(m map[string]string) {
+	usage, err := EncodeHLSCMAFWithExecutor(context.Background(), "in.mp4", t.TempDir(), info, profile, l, mock, func(m map[string]string) {
 		progressCalled = true
 	}, EncoderOptions{})
 
@@ -349,7 +351,7 @@ func TestEncodeDASHCMAFWithExecutor_Progress(t *testing.T) {
 	l := []ladder.Rendition{{Width: 1920, Height: 1080}}
 
 	var progressCalled bool
-	usage, err := EncodeDASHCMAFWithExecutor(context.Background(), "in.mp4", "out", info, profile, l, mock, func(m map[string]string) {
+	usage, err := EncodeDASHCMAFWithExecutor(context.Background(), "in.mp4", t.TempDir(), info, profile, l, mock, func(m map[string]string) {
 		progressCalled = true
 	}, EncoderOptions{})
 
@@ -364,6 +366,84 @@ func TestEncodeDASHCMAFWithExecutor_Progress(t *testing.T) {
 	}
 }
 
+func TestEncodeHLSCMAFWithExecutor_ClearsVideoRotationMetadata(t *testing.T) {
+	mock := executor.NewMockExecutor()
+	mock.Responses["ffmpeg"] = executor.MockResponse{Output: []byte(""), Usage: &executor.Usage{}}
+
+	info := probe.VideoInfo{Width: 1920, Height: 1080, FPS: 30}
+	profile := config.VOD
+	l := []ladder.Rendition{
+		{Width: 1920, Height: 1080, MaxRate: 5000, BufSize: 10000, Profile: "main", Level: "4.0"},
+		{Width: 1280, Height: 720, MaxRate: 3000, BufSize: 6000, Profile: "main", Level: "3.1"},
+	}
+
+	if _, err := EncodeHLSCMAFWithExecutor(context.Background(), "in.mp4", t.TempDir(), info, profile, l, mock, nil, EncoderOptions{}); err != nil {
+		t.Fatalf("EncodeHLSCMAFWithExecutor() err=%v", err)
+	}
+
+	args := mock.CallLog[0].Args
+	assertArgPair(t, args, "-metadata:s:v:0", "rotate=0")
+	assertArgPair(t, args, "-metadata:s:v:1", "rotate=0")
+}
+
+func TestEncodeDASHCMAFWithExecutor_ClearsVideoRotationMetadata(t *testing.T) {
+	mock := executor.NewMockExecutor()
+	mock.Responses["ffmpeg"] = executor.MockResponse{Output: []byte(""), Usage: &executor.Usage{}}
+
+	info := probe.VideoInfo{Width: 1920, Height: 1080, FPS: 30}
+	profile := config.VOD
+	l := []ladder.Rendition{
+		{Width: 1920, Height: 1080, MaxRate: 5000, BufSize: 10000, Profile: "main", Level: "4.0"},
+		{Width: 1280, Height: 720, MaxRate: 3000, BufSize: 6000, Profile: "main", Level: "3.1"},
+	}
+
+	if _, err := EncodeDASHCMAFWithExecutor(context.Background(), "in.mp4", t.TempDir(), info, profile, l, mock, nil, EncoderOptions{}); err != nil {
+		t.Fatalf("EncodeDASHCMAFWithExecutor() err=%v", err)
+	}
+
+	args := mock.CallLog[0].Args
+	assertArgPair(t, args, "-metadata:s:v:0", "rotate=0")
+	assertArgPair(t, args, "-metadata:s:v:1", "rotate=0")
+}
+
+func TestEncodeHLSCMAFWithExecutor_CreatesOutputDir(t *testing.T) {
+	mock := executor.NewMockExecutor()
+	mock.Responses["ffmpeg"] = executor.MockResponse{Output: []byte(""), Usage: &executor.Usage{}}
+
+	outDir := filepath.Join(t.TempDir(), "nested", "hls")
+	info := probe.VideoInfo{Width: 640, Height: 360, FPS: 30}
+	profile := config.VOD
+	l := []ladder.Rendition{
+		{Width: 640, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
+	}
+
+	if _, err := EncodeHLSCMAFWithExecutor(context.Background(), "in.mp4", outDir, info, profile, l, mock, nil, EncoderOptions{}); err != nil {
+		t.Fatalf("EncodeHLSCMAFWithExecutor() err=%v", err)
+	}
+	if st, err := os.Stat(outDir); err != nil || !st.IsDir() {
+		t.Fatalf("expected output dir to be created, stat=%v err=%v", st, err)
+	}
+}
+
+func TestEncodeDASHCMAFWithExecutor_CreatesOutputDir(t *testing.T) {
+	mock := executor.NewMockExecutor()
+	mock.Responses["ffmpeg"] = executor.MockResponse{Output: []byte(""), Usage: &executor.Usage{}}
+
+	outDir := filepath.Join(t.TempDir(), "nested", "dash")
+	info := probe.VideoInfo{Width: 640, Height: 360, FPS: 30}
+	profile := config.VOD
+	l := []ladder.Rendition{
+		{Width: 640, Height: 360, MaxRate: 1000, BufSize: 2000, Profile: "baseline", Level: "3.0"},
+	}
+
+	if _, err := EncodeDASHCMAFWithExecutor(context.Background(), "in.mp4", outDir, info, profile, l, mock, nil, EncoderOptions{}); err != nil {
+		t.Fatalf("EncodeDASHCMAFWithExecutor() err=%v", err)
+	}
+	if st, err := os.Stat(outDir); err != nil || !st.IsDir() {
+		t.Fatalf("expected output dir to be created, stat=%v err=%v", st, err)
+	}
+}
+
 func TestEncodeHLSCMAFWithExecutor_Error(t *testing.T) {
 	mock := executor.NewMockExecutor()
 	mock.Responses["ffmpeg"] = executor.MockResponse{
@@ -374,7 +454,7 @@ func TestEncodeHLSCMAFWithExecutor_Error(t *testing.T) {
 	profile := config.VOD
 	l := []ladder.Rendition{{Width: 1920, Height: 1080}}
 
-	_, err := EncodeHLSCMAFWithExecutor(context.Background(), "in.mp4", "out", info, profile, l, mock, nil, EncoderOptions{})
+	_, err := EncodeHLSCMAFWithExecutor(context.Background(), "in.mp4", t.TempDir(), info, profile, l, mock, nil, EncoderOptions{})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -390,7 +470,7 @@ func TestEncodeDASHCMAFWithExecutor_Error(t *testing.T) {
 	profile := config.VOD
 	l := []ladder.Rendition{{Width: 1920, Height: 1080}}
 
-	_, err := EncodeDASHCMAFWithExecutor(context.Background(), "in.mp4", "out", info, profile, l, mock, nil, EncoderOptions{})
+	_, err := EncodeDASHCMAFWithExecutor(context.Background(), "in.mp4", t.TempDir(), info, profile, l, mock, nil, EncoderOptions{})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -406,7 +486,7 @@ func TestEncodeHLSCMAFWithExecutor_Progress_Error(t *testing.T) {
 	profile := config.VOD
 	l := []ladder.Rendition{{Width: 1920, Height: 1080}}
 
-	_, err := EncodeHLSCMAFWithExecutor(context.Background(), "in.mp4", "out", info, profile, l, mock, func(m map[string]string) {}, EncoderOptions{})
+	_, err := EncodeHLSCMAFWithExecutor(context.Background(), "in.mp4", t.TempDir(), info, profile, l, mock, func(m map[string]string) {}, EncoderOptions{})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -422,7 +502,7 @@ func TestEncodeDASHCMAFWithExecutor_Progress_Error(t *testing.T) {
 	profile := config.VOD
 	l := []ladder.Rendition{{Width: 1920, Height: 1080}}
 
-	_, err := EncodeDASHCMAFWithExecutor(context.Background(), "in.mp4", "out", info, profile, l, mock, func(m map[string]string) {}, EncoderOptions{})
+	_, err := EncodeDASHCMAFWithExecutor(context.Background(), "in.mp4", t.TempDir(), info, profile, l, mock, func(m map[string]string) {}, EncoderOptions{})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -437,18 +517,28 @@ func TestEncodeLowLatency(t *testing.T) {
 	ladder := []ladder.Rendition{{Width: 1920, Height: 1080, MaxRate: 5000, BufSize: 10000, Profile: "main", Level: "4.0"}}
 
 	t.Run("HLS Low Latency", func(t *testing.T) {
-		_, err := EncodeHLSCMAFWithExecutor(context.Background(), "in", "out", info, profile, ladder, mock, nil, EncoderOptions{})
+		_, err := EncodeHLSCMAFWithExecutor(context.Background(), "in", t.TempDir(), info, profile, ladder, mock, nil, EncoderOptions{})
 		if err != nil {
 			t.Errorf("EncodeHLSCMAFWithExecutor failed: %v", err)
 		}
 	})
 
 	t.Run("DASH Low Latency", func(t *testing.T) {
-		_, err := EncodeDASHCMAFWithExecutor(context.Background(), "in", "out", info, profile, ladder, mock, nil, EncoderOptions{})
+		_, err := EncodeDASHCMAFWithExecutor(context.Background(), "in", t.TempDir(), info, profile, ladder, mock, nil, EncoderOptions{})
 		if err != nil {
 			t.Errorf("EncodeDASHCMAFWithExecutor failed: %v", err)
 		}
 	})
+}
+
+func assertArgPair(t *testing.T, args []string, key, value string) {
+	t.Helper()
+	for i := 0; i < len(args)-1; i++ {
+		if args[i] == key && args[i+1] == value {
+			return
+		}
+	}
+	t.Fatalf("args do not contain %q %q: %v", key, value, args)
 }
 
 func TestEncodeEncoderError(t *testing.T) {
@@ -459,28 +549,28 @@ func TestEncodeEncoderError(t *testing.T) {
 	l := []ladder.Rendition{{Width: 1920, Height: 1080, MaxRate: 5000, BufSize: 10000, Profile: "main", Level: "4.0"}}
 
 	t.Run("HLS Error with Progress", func(t *testing.T) {
-		_, err := EncodeHLSCMAFWithExecutor(context.Background(), "in", "out", info, config.VOD, l, mock, func(m map[string]string) {}, EncoderOptions{})
+		_, err := EncodeHLSCMAFWithExecutor(context.Background(), "in", t.TempDir(), info, config.VOD, l, mock, func(m map[string]string) {}, EncoderOptions{})
 		if err == nil {
 			t.Error("expected error but got none")
 		}
 	})
 
 	t.Run("DASH Error with Progress", func(t *testing.T) {
-		_, err := EncodeDASHCMAFWithExecutor(context.Background(), "in", "out", info, config.VOD, l, mock, func(m map[string]string) {}, EncoderOptions{})
+		_, err := EncodeDASHCMAFWithExecutor(context.Background(), "in", t.TempDir(), info, config.VOD, l, mock, func(m map[string]string) {}, EncoderOptions{})
 		if err == nil {
 			t.Error("expected error but got none")
 		}
 	})
 
 	t.Run("HLS Error without Progress", func(t *testing.T) {
-		_, err := EncodeHLSCMAFWithExecutor(context.Background(), "in", "out", info, config.VOD, l, mock, nil, EncoderOptions{})
+		_, err := EncodeHLSCMAFWithExecutor(context.Background(), "in", t.TempDir(), info, config.VOD, l, mock, nil, EncoderOptions{})
 		if err == nil {
 			t.Error("expected error but got none")
 		}
 	})
 
 	t.Run("DASH Error without Progress", func(t *testing.T) {
-		_, err := EncodeDASHCMAFWithExecutor(context.Background(), "in", "out", info, config.VOD, l, mock, nil, EncoderOptions{})
+		_, err := EncodeDASHCMAFWithExecutor(context.Background(), "in", t.TempDir(), info, config.VOD, l, mock, nil, EncoderOptions{})
 		if err == nil {
 			t.Error("expected error but got none")
 		}

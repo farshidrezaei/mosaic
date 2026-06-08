@@ -38,6 +38,9 @@ func EncodeDASHCMAFWithExecutor(
 	progressHandler func(map[string]string),
 	opts EncoderOptions,
 ) (*executor.Usage, error) {
+	if err := ensureOutputDir(outDir); err != nil {
+		return nil, err
+	}
 
 	gop := calcGOP(info.FPS, profile.SegmentDuration)
 
@@ -87,6 +90,7 @@ func EncodeDASHCMAFWithExecutor(
 
 			fmt.Sprintf("-s:v:%d", i), fmt.Sprintf("%dx%d", r.Width, r.Height),
 		)
+		args = appendVideoRotationMetadataReset(args, i)
 	}
 
 	// ---------- AUDIO ----------

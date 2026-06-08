@@ -70,9 +70,10 @@ func TestRotationFilter(t *testing.T) {
 		rotation   int
 		wantOK     bool
 	}{
-		{name: "90", rotation: 90, wantFilter: "transpose=1", wantOK: true},
+		{name: "90", rotation: 90, wantFilter: "transpose=2", wantOK: true},
 		{name: "180", rotation: 180, wantFilter: "transpose=1,transpose=1", wantOK: true},
-		{name: "270", rotation: 270, wantFilter: "transpose=2", wantOK: true},
+		{name: "270", rotation: 270, wantFilter: "transpose=1", wantOK: true},
+		{name: "-90", rotation: -90, wantFilter: "transpose=1", wantOK: true},
 		{name: "0", rotation: 0, wantOK: false},
 	}
 
@@ -145,6 +146,33 @@ func TestNormalizeRotationWithExecutor_Rotation90RunsFFmpeg(t *testing.T) {
 	mock := &orientationMockExecutor{
 		ffprobeOutputs: [][]byte{
 			[]byte(`{"streams":[{"width":1920,"height":1080,"codec_name":"h264","side_data_list":[{"rotation":90}]}]}`),
+			[]byte(`{"streams":[{"width":1080,"height":1920,"codec_name":"h264"}]}`),
+		},
+		createFFmpegOutput: true,
+	}
+
+	if err := normalizeRotationWithExecutor(context.Background(), inputPath, outputPath, mock); err != nil {
+		t.Fatalf("normalizeRotationWithExecutor() err=%v", err)
+	}
+	if mock.ffmpegCalls != 1 {
+		t.Fatalf("expected 1 ffmpeg call, got %d", mock.ffmpegCalls)
+	}
+	assertContainsArg(t, mock.lastFFmpegArgs, "-noautorotate")
+	assertContainsArg(t, mock.lastFFmpegArgs, "transpose=2")
+	assertContainsArg(t, mock.lastFFmpegArgs, "rotate=0")
+}
+
+func TestNormalizeRotationWithExecutor_RotationNegative90RunsFFmpeg(t *testing.T) {
+	dir := t.TempDir()
+	inputPath := filepath.Join(dir, "in.mp4")
+	outputPath := filepath.Join(dir, "out.mp4")
+	if err := os.WriteFile(inputPath, []byte("input"), 0o644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+
+	mock := &orientationMockExecutor{
+		ffprobeOutputs: [][]byte{
+			[]byte(`{"streams":[{"width":1920,"height":1080,"codec_name":"h264","side_data_list":[{"rotation":-90}]}]}`),
 			[]byte(`{"streams":[{"width":1080,"height":1920,"codec_name":"h264"}]}`),
 		},
 		createFFmpegOutput: true,

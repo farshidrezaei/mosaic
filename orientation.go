@@ -193,11 +193,11 @@ func normalizeRotationDegrees(rotation int) int {
 func rotationFilter(rotation int) (string, bool) {
 	switch normalizeRotationDegrees(rotation) {
 	case 90:
-		return "transpose=1", true
+		return "transpose=2", true
 	case 180:
 		return "transpose=1,transpose=1", true
 	case 270:
-		return "transpose=2", true
+		return "transpose=1", true
 	default:
 		return "", false
 	}

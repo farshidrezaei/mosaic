@@ -46,6 +46,9 @@ func EncodeHLSCMAFWithExecutor(
 	progressHandler func(map[string]string),
 	opts EncoderOptions,
 ) (*executor.Usage, error) {
+	if err := ensureOutputDir(outDir); err != nil {
+		return nil, err
+	}
 
 	filter := buildFilterGraph(l)
 	gop := calcGOP(info.FPS, profile.SegmentDuration)
@@ -98,6 +101,7 @@ func EncodeHLSCMAFWithExecutor(
 			fmt.Sprintf("-maxrate:v:%d", i), fmt.Sprintf("%dk", r.MaxRate),
 			fmt.Sprintf("-bufsize:v:%d", i), fmt.Sprintf("%dk", r.BufSize),
 		)
+		args = appendVideoRotationMetadataReset(args, i)
 	}
 
 	// ---------- AUDIO ----------

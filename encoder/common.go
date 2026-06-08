@@ -3,6 +3,7 @@ package encoder
 import (
 	"fmt"
 	"math"
+	"os"
 	"strings"
 )
 
@@ -39,6 +40,19 @@ func buildVarStreamMap(variants int, hasAudio bool) string {
 	}
 
 	return strings.Join(parts, " ")
+}
+
+func appendVideoRotationMetadataReset(args []string, streamIndex int) []string {
+	return append(args,
+		fmt.Sprintf("-metadata:s:v:%d", streamIndex), "rotate=0",
+	)
+}
+
+func ensureOutputDir(outDir string) error {
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return fmt.Errorf("create output dir: %w", err)
+	}
+	return nil
 }
 
 // ParseProgress parses FFmpeg's machine-readable progress output (from -progress pipe:1).

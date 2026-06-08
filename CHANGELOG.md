@@ -19,4 +19,7 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+- Cleared video rotation metadata on generated HLS/DASH renditions to prevent players from applying source rotation twice.
+- Corrected orientation normalization for +/-90 degree display matrices so normalized HLS output is not rotated upside down.
+- Created HLS/DASH output directories automatically before invoking FFmpeg.
 - Removed stale or incorrect API/docs statements (notably return signatures and outdated feature claims).

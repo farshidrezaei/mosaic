@@ -119,6 +119,7 @@ func TestEncodeHlsWithExecutor(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tt.job.OutputDir = filepath.Join(t.TempDir(), "hls")
 			mock := &fullMock{
 				probeVideoResponse: executor.MockResponse{
 					Output: []byte(`{"streams":[{"width":1920,"height":1080,"avg_frame_rate":"30/1"}]}`),
@@ -174,6 +175,7 @@ func TestEncodeDashWithExecutor(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tt.job.OutputDir = filepath.Join(t.TempDir(), "dash")
 			mock := &fullMock{
 				probeVideoResponse: executor.MockResponse{
 					Output: []byte(`{"streams":[{"width":1920,"height":1080,"avg_frame_rate":"30/1"}]}`),
@@ -353,7 +355,7 @@ func TestProgressReporting(t *testing.T) {
 	var progressUpdates []ProgressInfo
 	job := Job{
 		Input:     "test.mp4",
-		OutputDir: "/output",
+		OutputDir: filepath.Join(t.TempDir(), "hls"),
 		Profile:   ProfileVOD,
 		ProgressHandler: func(info ProgressInfo) {
 			progressUpdates = append(progressUpdates, info)
@@ -414,7 +416,7 @@ func TestEncodeHls(t *testing.T) {
 	// This test verifies the wrapper function exists and delegates correctly
 	job := Job{
 		Input:     "test.mp4",
-		OutputDir: "/output",
+		OutputDir: filepath.Join(t.TempDir(), "hls"),
 		Profile:   ProfileVOD,
 	}
 
@@ -448,7 +450,7 @@ func TestEncodeDash(t *testing.T) {
 
 	job := Job{
 		Input:     "test.mp4",
-		OutputDir: "/output",
+		OutputDir: filepath.Join(t.TempDir(), "dash"),
 		Profile:   ProfileVOD,
 	}
 
@@ -505,7 +507,7 @@ func TestProgressReportingDash(t *testing.T) {
 	var progressCalled bool
 	job := Job{
 		Input:     "test.mp4",
-		OutputDir: "/output",
+		OutputDir: filepath.Join(t.TempDir(), "dash"),
 		Profile:   ProfileVOD,
 		ProgressHandler: func(info ProgressInfo) {
 			progressCalled = true
@@ -582,7 +584,7 @@ func TestEncodeHlsError(t *testing.T) {
 	mock := &fullMock{
 		probeVideoResponse: executor.MockResponse{Err: errors.New("probe failed")},
 	}
-	job := Job{Input: "test.mp4", OutputDir: "/out", Profile: ProfileVOD}
+	job := Job{Input: "test.mp4", OutputDir: filepath.Join(t.TempDir(), "hls"), Profile: ProfileVOD}
 	_, err := EncodeHlsWithExecutor(context.Background(), job, mock)
 	if err == nil {
 		t.Error("expected error but got none")
@@ -593,7 +595,7 @@ func TestEncodeDashError(t *testing.T) {
 	mock := &fullMock{
 		probeVideoResponse: executor.MockResponse{Err: errors.New("probe failed")},
 	}
-	job := Job{Input: "test.mp4", OutputDir: "/out", Profile: ProfileVOD}
+	job := Job{Input: "test.mp4", OutputDir: filepath.Join(t.TempDir(), "dash"), Profile: ProfileVOD}
 	_, err := EncodeDashWithExecutor(context.Background(), job, mock)
 	if err == nil {
 		t.Error("expected error but got none")
@@ -614,7 +616,7 @@ func TestNilProgressHandler(t *testing.T) {
 
 	job := Job{
 		Input:           "test.mp4",
-		OutputDir:       "/output",
+		OutputDir:       filepath.Join(t.TempDir(), "streaming"),
 		Profile:         ProfileVOD,
 		ProgressHandler: nil, // Explicitly nil
 	}
