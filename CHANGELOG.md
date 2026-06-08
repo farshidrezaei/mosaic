@@ -11,6 +11,7 @@ All notable changes to this project are documented here.
 - Portrait/rotated portrait ladder handling in `ladder.Build`.
 - New tests for orientation detection and portrait ladder generation.
 - Documentation freshness policy in `CONTRIBUTING.md`.
+- Complete human and AI documentation set (`docs/`, `AGENTS.md`, `SUPPORT.md`, and `SECURITY.md`).
 
 ### Changed
 
