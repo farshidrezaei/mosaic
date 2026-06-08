@@ -6,6 +6,14 @@ All notable changes to this project are documented here.
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [v1.5.0] - 2026-06-08
+
+### Added
+
 - Orientation metadata support in probing (`rotation` from FFprobe side data/tags).
 - Orientation-aware helpers on `probe.VideoInfo` (`DisplayWidth`, `DisplayHeight`, `IsPortrait`).
 - Portrait/rotated portrait ladder handling in `ladder.Build`.
