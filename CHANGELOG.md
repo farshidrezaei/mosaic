@@ -10,6 +10,16 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+## [v1.5.2] - 2026-06-13
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Restricted orientation-normalization audio mapping to the first audio stream to avoid including malformed/unsupported auxiliary audio tracks in MP4 output.
+
 ## [v1.5.1] - 2026-06-13
 
 ### Added

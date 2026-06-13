@@ -114,7 +114,7 @@ func TestNormalizeRotationWithExecutor_NoRotationRemuxes(t *testing.T) {
 	assertContainsArg(t, mock.lastFFmpegArgs, "-c")
 	assertContainsArg(t, mock.lastFFmpegArgs, "copy")
 	assertContainsArg(t, mock.lastFFmpegArgs, "0:v:0")
-	assertContainsArg(t, mock.lastFFmpegArgs, "0:a?")
+	assertContainsArg(t, mock.lastFFmpegArgs, "0:a:0?")
 	assertContainsArg(t, mock.lastFFmpegArgs, "-dn")
 	assertContainsArg(t, mock.lastFFmpegArgs, "-sn")
 	assertContainsArg(t, mock.lastFFmpegArgs, "-map_chapters")
@@ -165,7 +165,7 @@ func TestNormalizeRotationWithExecutor_Rotation90RunsFFmpeg(t *testing.T) {
 	}
 	assertContainsArg(t, mock.lastFFmpegArgs, "-noautorotate")
 	assertContainsArg(t, mock.lastFFmpegArgs, "0:v:0")
-	assertContainsArg(t, mock.lastFFmpegArgs, "0:a?")
+	assertContainsArg(t, mock.lastFFmpegArgs, "0:a:0?")
 	assertContainsArg(t, mock.lastFFmpegArgs, "-dn")
 	assertContainsArg(t, mock.lastFFmpegArgs, "-sn")
 	assertContainsArg(t, mock.lastFFmpegArgs, "-map_chapters")
