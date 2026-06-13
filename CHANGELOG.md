@@ -10,6 +10,15 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+## [v1.5.1] - 2026-06-13
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Prevented orientation-normalization MP4 failures on inputs with unsupported extra streams (for example data/timecode tracks) by mapping only video/audio during normalization remux/rotate steps.
 ## [v1.5.0] - 2026-06-08
 
 ### Added
