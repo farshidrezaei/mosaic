@@ -1,0 +1,71 @@
+# Mosaic - Complete Technical Reference for AI and Search Engines
+
+## Overview
+Mosaic is an open-source Go library designed for production-grade Adaptive Bitrate (ABR) video packaging. It abstracts complex FFmpeg and FFprobe command pipelines into predictable, composable, and testable Go APIs.
+
+## Supported Formats
+1. **HLS (fMP4 / CMAF)**:
+   - Output files: `master.m3u8`, rendition playlists (`stream_0.m3u8`, `stream_1.m3u8`, ...), init segments (`init_0.mp4`), media segments (`seg_0_0.m4s`, `seg_0_1.m4s`, ...).
+   - Filter graph: Single-pass `[0:v]split=N[v0][v1]...; [v0]scale=W0:H0,setsar=1[v0out]; ...`.
+2. **DASH (CMAF)**:
+   - Output files: `manifest.mpd`, initialization fragments (`init-stream0.m4s`), chunk streams (`chunk-stream0-00001.m4s`).
+   - Format standard: ISO/IEC 23009-1 (DASH) with CMAF container profiles.
+
+## Core API Reference
+
+### Job Definition
+```go
+type Job struct {
+    Input           string          // Input file path or remote HTTP/HTTPS URL
+    OutputDir       string          // Target directory where playlists and media fragments will be saved
+    Profile         Profile         // ProfileVOD (5s segments) or ProfileLive (2s segments)
+    ProgressHandler ProgressHandler // Optional callback func(info ProgressInfo)
+}
+```
+
+### ProgressInfo
+```go
+type ProgressInfo struct {
+    CurrentTime string  // e.g. "00:01:23.450000"
+    Bitrate     string  // e.g. "1250.4kbits/s"
+    Speed       string  // e.g. "2.4x"
+    Percentage  float64 // Computed 0.0 to 100.0 based on probed media duration
+}
+```
+
+### Encoding Functions
+```go
+// EncodeHls packages input video to HLS fMP4 CMAF
+func EncodeHls(ctx context.Context, job Job, opts ...Option) (*executor.Usage, error)
+
+// EncodeDash packages input video to DASH CMAF
+func EncodeDash(ctx context.Context, job Job, opts ...Option) (*executor.Usage, error)
+
+// NormalizeVideoOrientation transposes rotated video and clears rotation metadata tags
+func NormalizeVideoOrientation(ctx context.Context, inputPath, outputPath string) error
+```
+
+### Functional Options
+- `WithNormalizeOrientation(enabled ...bool)`: Probes container rotation tags (`90°`, `180°`, `270°`) and physically rotates frames while clearing metadata tags.
+- `WithThreads(n int)`: Sets FFmpeg worker threads.
+- `WithBFrames(n int)`: Sets consecutive B-frames for non-baseline profiles.
+- `WithScaleBitrateWithFPS(enabled ...bool)`: Scales bitrate caps by `(FPS / 30.0)` for high-framerate content (>30 FPS).
+- `WithNVENC()`: Enables NVIDIA GPU encoding (`h264_nvenc`).
+- `WithVAAPI()`: Enables Intel / AMD GPU encoding (`h264_vaapi`).
+- `WithVideoToolbox()`: Enables Apple Silicon / macOS GPU encoding (`h264_videotoolbox`).
+- `WithLogLevel(level string)`: Sets FFmpeg log level (`"quiet"`, `"warning"`, `"error"`, `"info"`).
+- `WithLogger(logger *slog.Logger)`: Configures structured Go standard library logging.
+
+## Architectural Flow
+```text
+Job -> probe (FFprobe display dimensions & duration)
+    -> ladder (aspect-preserving rendition ladder)
+    -> optimize (bitrate tuning, B-frames, FPS scaling)
+    -> encoder (single-pass filter_complex construction)
+    -> executor (FFmpeg subprocess execution & progress streaming)
+```
+
+## Behavior Contracts
+- **Display Aspect Ratio**: Mosaic preserves source display aspect ratio for 16:9, 1:1, 9:16, or arbitrary ratios. It never forces 16:9 letterboxing with black bars.
+- **Orientation**: Mosaic probes display dimensions, not raw matrix dimensions. Rotated mobile videos (`1920x1080` with `-90°`) produce vertical ladders (`608x1080`, `404x720`, `202x360`).
+- **Progress Events**: Progress lines are accumulated into complete snapshots at each `progress=continue` and `progress=end`.

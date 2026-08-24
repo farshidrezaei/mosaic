@@ -1,0 +1,91 @@
+# Mosaic - Adaptive Bitrate Video Packaging for Go
+
+> Mosaic is a production-ready Go library for adaptive bitrate (ABR) video packaging into HLS (fMP4) and DASH CMAF. It computes aspect-preserving ladders, handles mobile video orientation normalization, tracks real-time progress, supports hardware acceleration (NVENC, VAAPI, VideoToolbox), and uses single-pass FFmpeg filter graphs.
+
+## Core Capabilities
+- **HLS fMP4 Packaging**: Generates `master.m3u8`, variant playlists, and `.m4s` CMAF media segments with single-pass `filter_complex`.
+- **DASH CMAF Packaging**: Generates `manifest.mpd` and fragmented MP4 initialization and chunk streams.
+- **Aspect Ratio Preservation**: Supports 16:9, 1:1, 9:16 portrait, and custom video ratios without black bars or letterboxing.
+- **Orientation Normalization**: Probes rotation metadata (`90°`, `180°`, `270°`) and physically rotates frames while clearing metadata tags.
+- **Real-Time Progress Tracking**: Calculates accurate percentage (`0.0%` to `100.0%`), encoded time, bitrate, and speed.
+- **Hardware Acceleration**: Automatic GPU encoder support for NVIDIA NVENC (`h264_nvenc`), Intel/AMD VAAPI (`h264_vaapi`), and Apple VideoToolbox (`h264_videotoolbox`).
+
+## Installation
+```bash
+go get github.com/farshidrezaei/mosaic
+```
+
+## Quick Example (HLS Packaging)
+```go
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/farshidrezaei/mosaic"
+)
+
+func main() {
+	job := mosaic.Job{
+		Input:     "input.mp4",
+		OutputDir: "./output/hls",
+		Profile:   mosaic.ProfileVOD,
+		ProgressHandler: func(info mosaic.ProgressInfo) {
+			fmt.Printf("\r[%5.1f%%] time=%s speed=%s", info.Percentage, info.CurrentTime, info.Speed)
+		},
+	}
+
+	usage, err := mosaic.EncodeHls(
+		context.Background(),
+		job,
+		mosaic.WithNormalizeOrientation(),
+		mosaic.WithThreads(4),
+	)
+	if err != nil {
+		log.Fatalf("HLS encoding failed: %v", err)
+	}
+	fmt.Printf("\nDone! Memory used: %d KB\n", usage.MaxMemory)
+}
+```
+
+## Quick Example (DASH CMAF Packaging)
+```go
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/farshidrezaei/mosaic"
+)
+
+func main() {
+	job := mosaic.Job{
+		Input:     "input.mp4",
+		OutputDir: "./output/dash",
+		Profile:   mosaic.ProfileVOD,
+	}
+
+	_, err := mosaic.EncodeDash(
+		context.Background(),
+		job,
+		mosaic.WithNormalizeOrientation(),
+		mosaic.WithBFrames(2),
+		mosaic.WithScaleBitrateWithFPS(),
+	)
+	if err != nil {
+		log.Fatalf("DASH encoding failed: %v", err)
+	}
+}
+```
+
+## Key Documentation Links
+- Full API Reference: https://farshidrezaei.github.io/mosaic/#/API
+- Architecture & Pipeline: https://farshidrezaei.github.io/mosaic/#/ARCHITECTURE
+- Encoding & CMAF Guide: https://farshidrezaei.github.io/mosaic/#/ENCODING
+- Orientation Normalization: https://farshidrezaei.github.io/mosaic/#/orientation
+- Functional Options: https://farshidrezaei.github.io/mosaic/#/options
+- Examples Catalog: https://farshidrezaei.github.io/mosaic/#/EXAMPLES
+- Full Consolidated LLM Reference: https://farshidrezaei.github.io/mosaic/llms-full.txt

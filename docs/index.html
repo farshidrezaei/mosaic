@@ -2,10 +2,58 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Mosaic - Adaptive Bitrate Video Packaging for Go</title>
+  <title>Mosaic - Adaptive Bitrate Video Packaging for Go (HLS & DASH CMAF)</title>
   <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
-  <meta name="description" content="Predictable, Production-Ready Adaptive Bitrate (ABR) Video Packaging for Go (HLS & DASH CMAF)">
+  <meta name="description" content="Predictable, Production-Ready Adaptive Bitrate (ABR) Video Packaging for Go. Generate standardized HLS fMP4 and DASH CMAF streams with aspect-preserving ladders, orientation normalization, and GPU acceleration.">
+  <meta name="keywords" content="golang, go, hls, dash, cmaf, video packaging, ffmpeg, adaptive bitrate, abr ladder, video transcoding, fmp4, nvenc, vaapi, videotoolbox">
+  <meta name="author" content="Farshid Rezaei">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
+  
+  <!-- Canonical & Social Meta -->
+  <link rel="canonical" href="https://farshidrezaei.github.io/mosaic/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Mosaic - Adaptive Bitrate Video Packaging for Go">
+  <meta property="og:description" content="Production-Ready Adaptive Bitrate (ABR) Video Packaging for Go. Standardized HLS (fMP4) and DASH CMAF generation with aspect-ratio preservation and orientation normalization.">
+  <meta property="og:url" content="https://farshidrezaei.github.io/mosaic/">
+  <meta property="og:image" content="https://farshidrezaei.github.io/mosaic/assets/logo.jpg">
+  <meta property="og:site_name" content="Mosaic Documentation">
+  
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Mosaic - Adaptive Bitrate Video Packaging for Go">
+  <meta name="twitter:description" content="Production-Ready Adaptive Bitrate (ABR) Video Packaging for Go. Standardized HLS fMP4 and DASH CMAF.">
+  <meta name="twitter:image" content="https://farshidrezaei.github.io/mosaic/assets/logo.jpg">
+  
+  <!-- Structured Data / JSON-LD for Search Engines & LLMs -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareSourceCode",
+        "name": "Mosaic",
+        "codeRepository": "https://github.com/farshidrezaei/mosaic",
+        "programmingLanguage": {
+          "@type": "ComputerLanguage",
+          "name": "Go"
+        },
+        "description": "Predictable, Production-Ready Adaptive Bitrate (ABR) Video Packaging for Go (HLS & DASH CMAF)",
+        "author": {
+          "@type": "Person",
+          "name": "Farshid Rezaei"
+        },
+        "license": "https://opensource.org/licenses/MIT",
+        "runtimePlatform": "Go 1.25+",
+        "applicationCategory": "MultimediaApplication"
+      },
+      {
+        "@type": "WebSite",
+        "name": "Mosaic Documentation",
+        "url": "https://farshidrezaei.github.io/mosaic/",
+        "description": "Official documentation and API reference for Mosaic Go video packaging library"
+      }
+    ]
+  }
+  </script>
   
   <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify-themeable@0/dist/css/theme-simple.css">

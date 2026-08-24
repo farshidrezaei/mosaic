@@ -1,3 +1,19 @@
+// Package mosaic provides production-ready Adaptive Bitrate (ABR) video packaging for Go.
+//
+// It probes media streams with FFprobe, computes aspect-preserving ABR rendition ladders,
+// applies bitrate optimizations, and generates standardized HLS (fMP4) and DASH CMAF streams
+// using single-pass FFmpeg filter graphs.
+//
+// Key features include:
+//   - Standardized HLS (fMP4) and MPEG-DASH CMAF packaging.
+//   - Aspect ratio preservation for 16:9, 1:1 square, 9:16 portrait, and custom video formats.
+//   - Automatic mobile video display matrix probing and orientation normalization.
+//   - Real-time block-accumulated progress reporting with percentage calculation (0.0% to 100.0%).
+//   - Hardware acceleration support for NVIDIA NVENC, Intel/AMD VAAPI, and Apple VideoToolbox.
+//   - High framerate (>30 FPS) bitrate scaling and configurable B-frame tuning.
+//   - Interface-driven testable architecture with 100% mock executor coverage.
+//
+// Documentation and guides: https://farshidrezaei.github.io/mosaic/
 package mosaic
 
 import (
