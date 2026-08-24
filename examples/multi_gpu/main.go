@@ -49,9 +49,9 @@ func main() {
 		job := mosaic.Job{
 			Input:     inputPath,
 			OutputDir: outDir,
-			Profile:   mosaic.ProfileLive,
+			Profile:   mosaic.ProfileVOD,
 			ProgressHandler: func(info mosaic.ProgressInfo) {
-				fmt.Printf("\r[%s] time=%s speed=%s", b.name, info.CurrentTime, info.Speed)
+				fmt.Printf("\r[%s] [%5.1f%%] time=%s speed=%s", b.name, info.Percentage, info.CurrentTime, info.Speed)
 			},
 		}
 

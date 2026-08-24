@@ -1,50 +1,63 @@
 # Mosaic
+
 <p align="center">
-  <img src="assets/logo.jpg" width="180">
+  <img src="assets/logo.jpg" width="180" alt="Mosaic Logo">
 </p>
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/farshidrezaei/mosaic)](https://goreportcard.com/report/github.com/farshidrezaei/mosaic)
-[![Go](https://github.com/farshidrezaei/mosaic/actions/workflows/go.yml/badge.svg)](https://github.com/farshidrezaei/mosaic/actions/workflows/go.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<p align="center">
+  <b>Predictable, Production-Ready Adaptive Bitrate (ABR) Video Packaging for Go</b>
+</p>
 
-`mosaic` is a Go library for adaptive bitrate video packaging. It probes input media with FFprobe, builds an optimized ABR ladder, and generates HLS or DASH CMAF outputs with FFmpeg.
+<p align="center">
+  <a href="https://pkg.go.dev/github.com/farshidrezaei/mosaic"><img src="https://pkg.go.dev/badge/github.com/farshidrezaei/mosaic.svg" alt="Go Reference"></a>
+  <a href="https://goreportcard.com/report/github.com/farshidrezaei/mosaic"><img src="https://goreportcard.com/badge/github.com/farshidrezaei/mosaic" alt="Go Report Card"></a>
+  <a href="https://github.com/farshidrezaei/mosaic/actions/workflows/go.yml"><img src="https://github.com/farshidrezaei/mosaic/actions/workflows/go.yml/badge.svg" alt="Build Status"></a>
+  <a href="https://github.com/farshidrezaei/mosaic/releases"><img src="https://img.shields.io/github/v/release/farshidrezaei/mosaic?include_prereleases" alt="Latest Release"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
+</p>
 
-The library is designed for applications that need predictable server-side encoding without shelling out manually for every FFmpeg command.
+---
 
-## Highlights
+`mosaic` is a robust Go library for adaptive bitrate video packaging. It probes input media with FFprobe, computes an aspect-preserving ABR ladder, applies bitrate optimizations, and generates standardized **HLS (fMP4)** and **DASH CMAF** streams using FFmpeg.
 
-- HLS CMAF output with `master.m3u8`, variant playlists, init segments, and fMP4 media segments.
-- DASH CMAF output with `manifest.mpd`, init segments, and media segments.
-- Aspect-preserving ABR ladders. Square inputs stay square, portrait inputs stay portrait, and non-standard dimensions keep their display ratio.
-- Orientation-aware probing using FFprobe display matrix and rotate metadata.
-- Optional orientation normalization that physically rotates frames and clears rotation metadata.
-- Automatic output directory creation for HLS and DASH jobs.
-- Audio stream detection with conditional audio mapping.
-- Progress callbacks from FFmpeg `-progress` output.
-- Functional options for threads, hardware encoder backend, FFmpeg log level, and logger.
-- Hardware encoder selection for NVENC, VAAPI, and VideoToolbox.
-- Dependency-injected command execution for fast unit tests and controlled integrations.
+Designed for server-side encoding workloads, background workers, and transcoding pipelines where predictability, clean abstractions, and zero external dependencies are critical.
 
-## Requirements
+---
 
-- Go `1.25+`
-- FFmpeg `4.4+`
-- FFprobe, usually installed with FFmpeg
-- FFmpeg builds must include H.264 and AAC support for the default outputs
+## ⚡ Highlights
 
-Hardware acceleration requires the corresponding FFmpeg encoder to be present:
+- **Standard CMAF Output**: Generates HLS (`master.m3u8`, variant playlists, `fMP4` segments) and DASH (`manifest.mpd`, `init.m4s`, `chunk.m4s`) streams.
+- **Aspect-Preserving ABR Ladders**: Automatically preserves the source display aspect ratio — landscape, square (1:1), portrait (9:16), or ultra-wide inputs never get distorted or letterboxed with black bars.
+- **Orientation Normalization**: Probes display matrices and rotation tags (`90°`, `180°`, `270°`), physically transposes frames when needed, and resets output metadata so mobile videos display correctly everywhere.
+- **Real-Time Progress Tracking**: Accurately computes encoding percentage (`0.0%` to `100.0%`), encoded time, current bitrate, and speed.
+- **Hardware Acceleration**: Out-of-the-box support for NVIDIA NVENC, Intel/AMD VAAPI, and Apple VideoToolbox.
+- **Single-Pass Filter Complex**: Both HLS and DASH use unified `filter_complex` graphs (`split -> scale -> setsar=1`) for optimal 1-pass encoding performance and SAR consistency.
+- **High Framerate Bitrate Scaling**: Optional automatic bitrate adjustments for high-framerate content (>30 FPS).
+- **Configurable B-Frames**: Tune B-frame counts across profiles for maximum compression efficiency.
+- **Zero Third-Party Dependencies**: Built strictly with Go standard library + FFmpeg/FFprobe CLI tooling.
+- **Fully Testable Architecture**: Interface-driven command executor allows 100% unit testing without calling live FFmpeg.
 
-- `h264_nvenc` for NVIDIA NVENC
-- `h264_vaapi` for VAAPI
-- `h264_videotoolbox` for Apple VideoToolbox
+---
 
-## Installation
+## 📋 Requirements
+
+- **Go**: `1.25+`
+- **FFmpeg**: `4.4+` (with `libx264` and `aac` support)
+- **FFprobe**: Typically installed alongside FFmpeg
+
+---
+
+## 📦 Installation
 
 ```bash
 go get github.com/farshidrezaei/mosaic
 ```
 
-## Quick Start: HLS
+---
+
+## 🚀 Quick Start
+
+### 1. HLS Packaging
 
 ```go
 package main
@@ -59,52 +72,37 @@ import (
 
 func main() {
 	job := mosaic.Job{
-		Input:     "/path/to/input.mp4",
-		OutputDir: "/tmp/mosaic-hls",
+		Input:     "input.mp4",
+		OutputDir: "./output/hls",
 		Profile:   mosaic.ProfileVOD,
 		ProgressHandler: func(info mosaic.ProgressInfo) {
-			fmt.Printf("time=%s bitrate=%s speed=%s\n", info.CurrentTime, info.Bitrate, info.Speed)
+			fmt.Printf("\r[%5.1f%%] time=%s bitrate=%s speed=%s",
+				info.Percentage, info.CurrentTime, info.Bitrate, info.Speed)
 		},
 	}
 
 	usage, err := mosaic.EncodeHls(
 		context.Background(),
 		job,
-		mosaic.WithNormalizeOrientation(),
+		mosaic.WithNormalizeOrientation(), // Handles mobile/rotated video
 		mosaic.WithThreads(4),
-		mosaic.WithLogLevel("warning"),
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("Encoding failed: %v", err)
 	}
 
-	if usage != nil {
-		fmt.Printf("user=%.2fs system=%.2fs maxrss=%d\n", usage.UserTime, usage.SystemTime, usage.MaxMemory)
-	}
+	fmt.Printf("\nDone! CPU User Time: %.2fs | Peak RSS: %d KB\n", usage.UserTime, usage.MaxMemory)
 }
 ```
 
-The generated HLS directory contains:
-
-```text
-master.m3u8
-stream_0.m3u8
-stream_1.m3u8
-stream_2.m3u8
-init_0.mp4 or init.mp4
-seg_0_0.m4s
-...
-```
-
-The exact number of variants depends on the input height and optimizer decisions.
-
-## Quick Start: DASH
+### 2. DASH CMAF Packaging
 
 ```go
 package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/farshidrezaei/mosaic"
@@ -112,267 +110,138 @@ import (
 
 func main() {
 	job := mosaic.Job{
-		Input:     "/path/to/input.mp4",
-		OutputDir: "/tmp/mosaic-dash",
+		Input:     "input.mp4",
+		OutputDir: "./output/dash",
 		Profile:   mosaic.ProfileVOD,
+		ProgressHandler: func(info mosaic.ProgressInfo) {
+			fmt.Printf("\r[%5.1f%%] time=%s bitrate=%s speed=%s",
+				info.Percentage, info.CurrentTime, info.Bitrate, info.Speed)
+		},
 	}
 
 	_, err := mosaic.EncodeDash(
 		context.Background(),
 		job,
 		mosaic.WithNormalizeOrientation(),
-		mosaic.WithLogLevel("warning"),
+		mosaic.WithBFrames(2),
+		mosaic.WithScaleBitrateWithFPS(),
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("DASH encoding failed: %v", err)
 	}
+
+	fmt.Println("\nDASH packaging complete -> ./output/dash/manifest.mpd")
 }
 ```
 
-The generated DASH directory contains:
+---
+
+## 🧭 Core Workflow
 
 ```text
-manifest.mpd
-init-stream$RepresentationID$.m4s
-chunk-stream$RepresentationID$-$Number$.m4s
-...
+Input Media ──► probe ──► ladder ──► optimize ──► encoder ──► FFmpeg (CMAF)
 ```
 
-## Input Sources
+1. **Probe**: `probe.Input` extracts video dimensions, framerate, duration, audio presence, and rotation metadata.
+2. **Ladder**: `ladder.Build` constructs a ladder preserving the original display aspect ratio.
+3. **Optimize**: `optimize.Apply` caps bitrates based on resolution/FPS and trims redundant, closely-spaced renditions.
+4. **Encoder**: Generates an optimal single-pass FFmpeg command graph and streams real-time progress.
 
-`Job.Input` can be a local file path or a public URL accepted by FFmpeg and FFprobe.
+---
+
+## 🎛️ Functional Options
+
+Mosaic provides composable functional options to tailor the encoding process:
+
+| Option | Description |
+|---|---|
+| `mosaic.WithNormalizeOrientation(bool...)` | Probes rotation metadata, transposes video if rotated, and clears output rotation tags. |
+| `mosaic.WithThreads(n)` | Sets CPU encoding thread count (`0` = FFmpeg auto-detection). |
+| `mosaic.WithBFrames(n)` | Sets number of B-frames for non-baseline profiles (default `0`). |
+| `mosaic.WithScaleBitrateWithFPS(bool...)` | Proportionally scales bitrate caps for high-framerate videos (>30 FPS). |
+| `mosaic.WithNVENC()` | Uses NVIDIA hardware encoding (`h264_nvenc`). |
+| `mosaic.WithVAAPI()` | Uses Intel/AMD hardware encoding (`h264_vaapi`). |
+| `mosaic.WithVideoToolbox()` | Uses Apple VideoToolbox hardware encoding (`h264_videotoolbox`). |
+| `mosaic.WithGPU(config.GPUType)` | Selects a specific GPU backend explicitly. |
+| `mosaic.WithLogLevel(level)` | Sets FFmpeg log level (`quiet`, `error`, `warning`, `info`, `debug`). |
+| `mosaic.WithLogger(logger)` | Sets a custom `*slog.Logger` for internal library logs. |
+
+---
+
+## 📐 Aspect Ratio & Ladder Preservation
+
+Unlike legacy pipelines that letterbox non-16:9 videos into fixed frames, Mosaic calculates each rendition's width dynamically based on display dimensions:
+
+| Input Resolution | Aspect Ratio | Generated Renditions |
+|---|---|---|
+| `1920x1080` | 16:9 Landscape | `1920x1080` (5000k), `1280x720` (3000k), `640x360` (1000k) |
+| `1080x1080` | 1:1 Square | `1080x1080` (5000k), `720x720` (3000k), `360x360` (1000k) |
+| `1080x1920` | 9:16 Portrait | `608x1080` (5000k), `404x720` (3000k), `202x360` (1000k) |
+| `1280x718` | Custom Landscape | `642x360` (1000k) |
+| `426x240` | Low Resolution | `426x240` (1000k) *(no upscaling)* |
+
+---
+
+## 📊 Real-Time Progress Monitoring
+
+The `ProgressHandler` receives parsed FFmpeg progress information on every tick:
 
 ```go
-job := mosaic.Job{
-	Input:     "https://example.com/video.mp4",
-	OutputDir: "/tmp/output",
-	Profile:   mosaic.ProfileVOD,
-}
-```
-
-For remote inputs, FFmpeg and FFprobe must be able to resolve and fetch the URL from the runtime environment.
-
-## Output Directories
-
-`mosaic` creates `Job.OutputDir` automatically before invoking FFmpeg.
-
-If the process cannot write to the target directory, encoding fails with an error such as:
-
-```text
-create output dir: mkdir /path: permission denied
-```
-
-Use a writable output directory and ensure enough disk space for all generated variants and segments.
-
-## Encoding Profiles
-
-| Profile       | Segment Duration | Low Latency Flags |
-|---------------|-----------------:|------------------:|
-| `ProfileVOD`  |               5s |                No |
-| `ProfileLive` |               2s |               Yes |
-
-`ProfileLive` enables shorter segments and HLS low-latency related flags. It does not implement a full live ingest loop by itself.
-
-## Aspect Ratio and Ladder Behavior
-
-Mosaic builds quality rungs using target heights of `1080`, `720`, and `360`, but it computes each rung width from the input display aspect ratio.
-
-Examples:
-
-| Input Display Size | Output Rungs                       |
-|--------------------|------------------------------------|
-| `1920x1080`        | `1920x1080`, `1280x720`, `640x360` |
-| `1080x1080`        | `1080x1080`, `720x720`, `360x360`  |
-| `1080x1920`        | `608x1080`, `404x720`, `202x360`   |
-| `1280x718`         | `642x360`                          |
-| `426x240`          | `426x240`                          |
-
-Notes:
-
-- The ladder is based on effective display dimensions after rotation metadata is applied.
-- Output dimensions are forced to even numbers for broad H.264 and `yuv420p` compatibility.
-- Inputs below 360p are not upscaled. The fallback rung keeps the source display height.
-- HLS no longer pads video into a fixed 16:9 frame. The output frame itself carries the preserved aspect ratio.
-
-## Orientation Handling
-
-Some phone videos store frames in one orientation and rely on container metadata such as a display matrix or `rotate` tag to tell players how to display them.
-
-Mosaic handles this in two layers:
-
-1. `probe.VideoInfo` exposes `DisplayWidth`, `DisplayHeight`, and `IsPortrait`, so ladders are built from display dimensions instead of raw stored dimensions.
-2. `WithNormalizeOrientation()` physically rotates frames for `90`, `180`, and `270` degree metadata and clears rotation metadata from output streams.
-
-Recommended default:
-
-```go
-usage, err := mosaic.EncodeHls(
-	ctx,
-	job,
-	mosaic.WithNormalizeOrientation(),
-)
-```
-
-Use orientation normalization when targeting browsers, mobile players, or mixed playback environments where rotation metadata support may differ.
-
-## Progress Reporting
-
-Set `Job.ProgressHandler` to receive parsed values from FFmpeg `-progress`.
-
-```go
-job.ProgressHandler = func(info mosaic.ProgressInfo) {
-	fmt.Printf("progress=%.1f%% time=%s bitrate=%s speed=%s\n", info.Percentage, info.CurrentTime, info.Bitrate, info.Speed)
-}
-```
-
-Fields:
-
-- `CurrentTime`: FFmpeg `out_time`
-- `Bitrate`: FFmpeg `bitrate`
-- `Speed`: FFmpeg `speed`
-- `Percentage`: real-time calculated percentage (0.0 to 100.0) based on source duration
-
-## Hardware Encoding
-
-Use a convenience option:
-
-```go
-mosaic.WithNVENC()
-mosaic.WithVAAPI()
-mosaic.WithVideoToolbox()
-```
-
-Or select a backend explicitly:
-
-```go
-mosaic.WithGPU(config.GPU_NVENC)
-```
-
-Hardware options only select FFmpeg encoder names. They do not validate driver availability, device permissions, pixel format constraints, or platform-specific FFmpeg requirements.
-
-## Public API
-
-```go
-type Job struct {
-	Input           string
-	OutputDir       string
-	ProgressHandler ProgressHandler
-	Profile         Profile
-}
-
 type ProgressInfo struct {
-	CurrentTime string
-	Bitrate     string
-	Speed       string
-	Percentage  float64
+	Percentage  float64 // Exact percentage (0.0% to 100.0%)
+	CurrentTime string  // Encoded timestamp (e.g., "00:01:23.456000")
+	Bitrate     string  // Current encoding bitrate (e.g., "2450.3kbits/s")
+	Speed       string  // Encoding speed factor (e.g., "1.85x")
 }
-
-type Profile string
-
-const (
-	ProfileVOD  Profile = "vod"
-	ProfileLive Profile = "live"
-)
-
-func EncodeHls(ctx context.Context, job Job, opts ...Option) (*executor.Usage, error)
-func EncodeHlsWithExecutor(ctx context.Context, job Job, exec executor.CommandExecutor, opts ...Option) (*executor.Usage, error)
-
-func EncodeDash(ctx context.Context, job Job, opts ...Option) (*executor.Usage, error)
-func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandExecutor, opts ...Option) (*executor.Usage, error)
-
-func NormalizeVideoOrientation(ctx context.Context, inputPath, outputPath string) error
-
-func WithThreads(n int) Option
-func WithBFrames(n int) Option
-func WithScaleBitrateWithFPS(enabled ...bool) Option
-func WithGPU(t ...config.GPUType) Option
-func WithNormalizeOrientation(enabled ...bool) Option
-func WithNVENC() Option
-func WithVAAPI() Option
-func WithVideoToolbox() Option
-func WithLogLevel(level string) Option
-func WithLogger(logger *slog.Logger) Option
 ```
 
-See [docs/API.md](./docs/API.md) for detailed API notes.
+---
 
-## Examples
+## 📂 Examples
 
-Runnable examples live under `examples/`.
+Complete, runnable examples are available in the [`examples/`](./examples) directory:
+
+- [`examples/simple_hls`](./examples/simple_hls): Standard HLS VOD packaging with progress reporting.
+- [`examples/advanced_dash`](./examples/advanced_dash): DASH CMAF with B-Frames, FPS scaling, and custom thread control.
+- [`examples/live_streaming`](./examples/live_streaming): Low-latency live streaming profile (2s segments) for HLS & DASH.
+- [`examples/orientation_normalization`](./examples/orientation_normalization): Standalone and pipeline rotation normalization for mobile videos.
+- [`examples/progress_monitoring`](./examples/progress_monitoring): Terminal progress bar with percentage, speed, bitrate, and resource usage.
+- [`examples/multi_gpu`](./examples/multi_gpu): Multi-backend GPU hardware acceleration (NVENC / VAAPI / VideoToolbox).
+
+---
+
+## 🧪 Testing & Quality Assurance
+
+Mosaic is tested with a 100% dependency-injected architecture, enforcing strict code hygiene and race detection:
 
 ```bash
-cd examples/simple_hls
-cp /path/to/input.mp4 input.mp4
-GOCACHE=/tmp/go-build go run .
-```
+# Run all tests with race detector
+GOCACHE=/tmp/go-build go test -v -race ./...
 
-Available examples:
-
-- `examples/simple_hls`: basic HLS encode
-- `examples/advanced_dash`: DASH encode with options
-- `examples/multi_gpu`: tries several hardware encoder backends
-
-## Testing
-
-```bash
-# Unit and package tests
-go test ./...
-
-# If the default Go cache is not writable in your environment
-GOCACHE=/tmp/go-build go test ./...
-
-# Vet
+# Static analysis
 GOCACHE=/tmp/go-build go vet ./...
 
-# Coverage
-GOCACHE=/tmp/go-build go test ./... -cover
-
-# Lint (Mandatory)
+# Linter (Mandatory - zero issues policy)
 golangci-lint run
 ```
 
-See [docs/TESTING.md](./docs/TESTING.md) for integration and smoke-test guidance.
+---
 
-## Documentation Map
+## 📚 Documentation Map
 
-- [docs/API.md](./docs/API.md): public API reference and usage notes
-- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md): package boundaries and runtime flow
-- [docs/ENCODING.md](./docs/ENCODING.md): ladder, orientation, HLS, DASH, and FFmpeg behavior
-- [docs/TESTING.md](./docs/TESTING.md): test strategy, commands, and smoke tests
-- [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md): common failures and debugging steps
-- [STRUCTURE.md](STRUCTURE.md): quick repository layout
-- [CONTRIBUTING.md](CONTRIBUTING.md): contribution workflow
-- [ROADMAP.md](ROADMAP.md): planned work
-- [CHANGELOG.md](CHANGELOG.md): release notes
-- [SUPPORT.md](SUPPORT.md): support and bug-report guidance
-- [SECURITY.md](SECURITY.md): security reporting policy
-- [AGENTS.md](AGENTS.md): instructions for AI coding agents
+- [docs/API.md](./docs/API.md): Complete public API reference and struct definitions.
+- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md): Package boundaries and internal execution flow.
+- [docs/ENCODING.md](./docs/ENCODING.md): Ladder generation, orientation, HLS, DASH, and FFmpeg filter graphs.
+- [docs/TESTING.md](./docs/TESTING.md): Mock executor guide, test strategies, and smoke tests.
+- [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md): Common errors and debugging tips.
+- [STRUCTURE.md](STRUCTURE.md): Repository layout and package responsibilities.
+- [CONTRIBUTING.md](CONTRIBUTING.md): Contribution workflow and development contracts.
+- [CHANGELOG.md](CHANGELOG.md): Complete version history and release notes.
+- [SECURITY.md](SECURITY.md): Vulnerability reporting policy.
 
-## Repository Layout
+---
 
-```text
-mosaic/
-├── encode.go
-├── job.go
-├── orientation.go
-├── config/
-├── probe/
-├── ladder/
-├── optimize/
-├── encoder/
-├── internal/executor/
-├── examples/
-├── docs/
-└── README.md
-```
+## 📄 License
 
-## Current Limitations
+MIT License. See [LICENSE](LICENSE) for details.
 
-- H.264/AAC are the default codecs.
-- HEVC and AV1 are planned but not implemented as public options yet.
-- Cloud uploads, DRM packaging, thumbnails, and sprites are planned but not implemented.
-- Hardware encoder options assume FFmpeg and the host system are already configured.
-
-## License
-
-MIT. See [LICENSE](LICENSE).

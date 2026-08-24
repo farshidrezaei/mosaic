@@ -33,9 +33,9 @@ func main() {
 	job := mosaic.Job{
 		Input:     inputPath,
 		OutputDir: outputDir,
-		Profile:   mosaic.ProfileLive,
+		Profile:   mosaic.ProfileVOD,
 		ProgressHandler: func(info mosaic.ProgressInfo) {
-			fmt.Printf("\rtime=%s speed=%s bitrate=%s", info.CurrentTime, info.Speed, info.Bitrate)
+			fmt.Printf("\r[%5.1f%%] time=%s speed=%s bitrate=%s", info.Percentage, info.CurrentTime, info.Speed, info.Bitrate)
 		},
 	}
 
@@ -46,8 +46,9 @@ func main() {
 		context.Background(),
 		job,
 		mosaic.WithNormalizeOrientation(),
-		mosaic.WithNVENC(),
-		mosaic.WithThreads(0),
+		mosaic.WithBFrames(2),
+		mosaic.WithScaleBitrateWithFPS(),
+		mosaic.WithThreads(4),
 		mosaic.WithLogLevel("warning"),
 	)
 	fmt.Println()

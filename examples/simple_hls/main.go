@@ -35,7 +35,7 @@ func main() {
 		OutputDir: outputDir,
 		Profile:   mosaic.ProfileVOD,
 		ProgressHandler: func(info mosaic.ProgressInfo) {
-			fmt.Printf("\rtime=%s speed=%s bitrate=%s", info.CurrentTime, info.Speed, info.Bitrate)
+			fmt.Printf("\r[%5.1f%%] time=%s speed=%s bitrate=%s", info.Percentage, info.CurrentTime, info.Speed, info.Bitrate)
 		},
 	}
 
