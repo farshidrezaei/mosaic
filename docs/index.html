@@ -10,65 +10,7 @@
   <link rel="icon" type="image/jpeg" href="assets/logo.jpg">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify-themeable@0/dist/css/theme-simple.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css">
-  
-  <style>
-    :root {
-      --base-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      --theme-color: #0066cc;
-      --sidebar-width: 280px;
-      --sidebar-background: #f8fafc;
-      --sidebar-nav-link-color: #334155;
-      --sidebar-nav-link-color--active: #0066cc;
-      --cover-background-color: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-      --code-inline-background: #f1f5f9;
-      --code-inline-color: #0f172a;
-      --table-row-odd-background: #f8fafc;
-    }
-    
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --base-background-color: #0f172a;
-        --base-color: #e2e8f0;
-        --sidebar-background: #090d16;
-        --sidebar-nav-link-color: #94a3b8;
-        --sidebar-nav-link-color--active: #38bdf8;
-        --code-inline-background: #1e293b;
-        --code-inline-color: #38bdf8;
-        --table-row-odd-background: #1e293b;
-        --table-cell-border-color: #334155;
-      }
-    }
-
-    .app-name-link img {
-      width: 48px;
-      height: 48px;
-      border-radius: 8px;
-      margin-right: 8px;
-      vertical-align: middle;
-    }
-
-    .cover-main img {
-      max-width: 140px;
-      border-radius: 16px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-      margin-bottom: 1.5rem;
-    }
-
-    .markdown-section code {
-      font-family: 'JetBrains Mono', 'Fira Code', Menlo, Monaco, Consolas, monospace;
-      font-size: 0.9em;
-    }
-
-    .sidebar-nav strong {
-      color: #64748b;
-      font-size: 0.85em;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      display: block;
-      margin-top: 1.2em;
-      margin-bottom: 0.4em;
-    }
-  </style>
+  <link rel="stylesheet" href="assets/custom.css">
 </head>
 <body>
   <div id="app">Loading Mosaic Documentation...</div>
@@ -87,7 +29,7 @@
       search: {
         maxAge: 86400000,
         paths: 'auto',
-        placeholder: 'Search documentation...',
+        placeholder: 'Search docs...',
         noData: 'No results found',
         depth: 4
       },
