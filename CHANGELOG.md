@@ -10,6 +10,13 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+## [v1.7.2] - 2026-08-25
+
+### Fixed
+
+- Fixed real-time progress reporting by accumulating FFmpeg key-value progress lines into complete blocks (`StreamProgress`) emitted at `progress=continue` and `progress=end`. Prevents partial single-line emission where metrics (`out_time`, `speed`, `bitrate`, `Percentage`) appeared empty.
+- Preserved last known valid metrics when FFmpeg emits `N/A` at `progress=end`, ensuring final percentage accurately reflects `100.0%`.
+
 ## [v1.7.1] - 2026-08-25
 
 ### Fixed

@@ -71,6 +71,53 @@ func ParseProgress(raw string) map[string]string {
 	return progress
 }
 
+// StreamProgress reads updates from progressChan, accumulates key-value pairs into blocks,
+// and invokes handler whenever a progress block completes (at "progress=continue" or "progress=end").
+func StreamProgress(progressChan <-chan string, handler func(map[string]string)) {
+	if handler == nil {
+		for range progressChan {
+		}
+		return
+	}
+
+	block := make(map[string]string)
+	emitted := false
+	for raw := range progressChan {
+		lines := strings.Split(raw, "\n")
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				k := strings.TrimSpace(parts[0])
+				v := strings.TrimSpace(parts[1])
+				// Retain last known valid values if FFmpeg emits "N/A" (e.g. at progress=end)
+				if v == "N/A" && block[k] != "" && block[k] != "N/A" {
+					continue
+				}
+				block[k] = v
+
+				if k == "progress" {
+					if v == "continue" || v == "end" {
+						snapshot := make(map[string]string, len(block))
+						for key, val := range block {
+							snapshot[key] = val
+						}
+						handler(snapshot)
+						emitted = true
+					}
+				}
+			}
+		}
+	}
+
+	if !emitted && len(block) > 0 {
+		handler(block)
+	}
+}
+
 // ParseOutTimeSeconds converts FFmpeg progress timestamps (out_time_us, out_time_ms, or out_time) to seconds.
 func ParseOutTimeSeconds(m map[string]string) float64 {
 	if usStr, ok := m["out_time_us"]; ok && usStr != "" {

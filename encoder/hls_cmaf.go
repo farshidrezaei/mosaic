@@ -166,9 +166,7 @@ func EncodeHLSCMAFWithExecutor(
 			errChan <- err
 		}()
 
-		for raw := range progressChan {
-			progressHandler(ParseProgress(raw))
-		}
+		StreamProgress(progressChan, progressHandler)
 
 		if err := <-errChan; err != nil {
 			return nil, fmt.Errorf("ffmpeg HLS failed: %w", err)

@@ -174,12 +174,16 @@ func buildProgressCallback(handler ProgressHandler, duration float64) func(map[s
 	return func(m map[string]string) {
 		var percentage float64
 		if duration > 0 {
-			currentSec := encoder.ParseOutTimeSeconds(m)
-			percentage = (currentSec / duration) * 100.0
-			if percentage > 100.0 {
+			if m["progress"] == "end" {
 				percentage = 100.0
-			} else if percentage < 0.0 {
-				percentage = 0.0
+			} else {
+				currentSec := encoder.ParseOutTimeSeconds(m)
+				percentage = (currentSec / duration) * 100.0
+				if percentage > 100.0 {
+					percentage = 100.0
+				} else if percentage < 0.0 {
+					percentage = 0.0
+				}
 			}
 		}
 		handler(ProgressInfo{

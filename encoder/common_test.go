@@ -131,3 +131,35 @@ func TestParseOutTimeSeconds(t *testing.T) {
 		})
 	}
 }
+
+func TestStreamProgress(t *testing.T) {
+	ch := make(chan string, 10)
+	ch <- "frame=10"
+	ch <- "fps=30"
+	ch <- "out_time=00:00:01.000000"
+	ch <- "speed=1.5x"
+	ch <- "progress=continue"
+	ch <- "frame=20"
+	ch <- "out_time=00:00:02.000000"
+	ch <- "progress=end"
+	close(ch)
+
+	var snapshots []map[string]string
+	StreamProgress(ch, func(m map[string]string) {
+		snapshots = append(snapshots, m)
+	})
+
+	if len(snapshots) != 2 {
+		t.Fatalf("expected 2 snapshots, got %d", len(snapshots))
+	}
+
+	// Snapshot 1
+	if snapshots[0]["frame"] != "10" || snapshots[0]["out_time"] != "00:00:01.000000" || snapshots[0]["speed"] != "1.5x" {
+		t.Errorf("unexpected snapshot 0: %+v", snapshots[0])
+	}
+
+	// Snapshot 2
+	if snapshots[1]["frame"] != "20" || snapshots[1]["out_time"] != "00:00:02.000000" || snapshots[1]["progress"] != "end" {
+		t.Errorf("unexpected snapshot 1: %+v", snapshots[1])
+	}
+}
