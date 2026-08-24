@@ -7,7 +7,7 @@
 > Predictable, Production-Ready Adaptive Bitrate (ABR) Video Packaging for Go
 
 <p align="center">
-  <a href="README.md" class="button-primary">🚀 Get Started</a>
+  <a href="#/quickstart" class="button-primary">🚀 Get Started</a>
   <a href="https://github.com/farshidrezaei/mosaic" target="_blank" class="button-secondary">⭐ Star on GitHub</a>
 </p>
 

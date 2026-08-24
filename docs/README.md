@@ -9,8 +9,12 @@
 </p>
 
 <p align="center">
+  <a href="https://farshidrezaei.github.io/mosaic/"><img src="https://img.shields.io/badge/Documentation-GitHub%20Pages-blue?style=for-the-badge&logo=github" alt="Documentation Portal"></a>
+</p>
+
+<p align="center">
   <a href="https://pkg.go.dev/github.com/farshidrezaei/mosaic"><img src="https://pkg.go.dev/badge/github.com/farshidrezaei/mosaic.svg" alt="Go Reference"></a>
-  <a href="https://goreportcard.com/report/github.com/farshidrezaei/mosaic"><img src="https://goreportcard.com/badge/github.com/farshidrezaei/mosaic" alt="Go Report Card"></a>
+  <a href="https://golang.org/"><img src="https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go" alt="Go Version"></a>
   <a href="https://github.com/farshidrezaei/mosaic/actions/workflows/go.yml"><img src="https://github.com/farshidrezaei/mosaic/actions/workflows/go.yml/badge.svg" alt="Build Status"></a>
   <a href="https://github.com/farshidrezaei/mosaic/releases"><img src="https://img.shields.io/github/v/release/farshidrezaei/mosaic?include_prereleases" alt="Latest Release"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
@@ -19,6 +23,8 @@
 ---
 
 `mosaic` is a robust Go library for adaptive bitrate video packaging. It probes input media with FFprobe, computes an aspect-preserving ABR ladder, applies bitrate optimizations, and generates standardized **HLS (fMP4)** and **DASH CMAF** streams using FFmpeg.
+
+📖 **Full Online Documentation & Guides**: [https://farshidrezaei.github.io/mosaic/](https://farshidrezaei.github.io/mosaic/)
 
 Designed for server-side encoding workloads, background workers, and transcoding pipelines where predictability, clean abstractions, and zero external dependencies are critical.
 
@@ -229,6 +235,7 @@ golangci-lint run
 
 ## 📚 Documentation Map
 
+- [🌐 Online Documentation Portal](https://farshidrezaei.github.io/mosaic/): Full interactive guide, API reference, and searchable docs.
 - [docs/API.md](./docs/API.md): Complete public API reference and struct definitions.
 - [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md): Package boundaries and internal execution flow.
 - [docs/ENCODING.md](./docs/ENCODING.md): Ladder generation, orientation, HLS, DASH, and FFmpeg filter graphs.
