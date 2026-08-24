@@ -149,6 +149,10 @@ func EncodeHls(ctx context.Context, job Job, opts ...Option) (*executor.Usage, e
 // EncodeHlsWithExecutor is like EncodeHls but allows providing a custom CommandExecutor.
 // This is primarily used for testing or advanced command execution scenarios.
 func EncodeHlsWithExecutor(ctx context.Context, job Job, exec executor.CommandExecutor, opts ...Option) (*executor.Usage, error) {
+	if err := job.validate(); err != nil {
+		return nil, err
+	}
+
 	o := defaultOptions()
 	for _, opt := range opts {
 		opt(o)
@@ -204,6 +208,10 @@ func EncodeDash(ctx context.Context, job Job, opts ...Option) (*executor.Usage, 
 // EncodeDashWithExecutor is like EncodeDash but allows providing a custom CommandExecutor.
 // This is primarily used for testing or advanced command execution scenarios.
 func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandExecutor, opts ...Option) (*executor.Usage, error) {
+	if err := job.validate(); err != nil {
+		return nil, err
+	}
+
 	o := defaultOptions()
 	for _, opt := range opts {
 		opt(o)

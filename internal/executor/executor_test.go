@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -285,11 +286,12 @@ func TestRealCommandExecutor_ExecuteWithProgress(t *testing.T) {
 		t.Fatal("expected usage stats, got nil")
 	}
 
-	var totalOutput string
+	var lines []string
 	for line := range progress {
-		totalOutput += line
+		lines = append(lines, line)
 	}
-	if totalOutput != "line1\nline2\n" { // The progress channel gets lines with their newlines
+	totalOutput := strings.Join(lines, "\n") + "\n"
+	if totalOutput != "line1\nline2\n" { // The progress channel sends individual lines
 		t.Errorf("expected 'line1\\nline2\\n', got '%s'", totalOutput)
 	}
 }

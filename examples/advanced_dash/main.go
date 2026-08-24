@@ -27,7 +27,7 @@ func main() {
 	}
 
 	if mkDirErr := os.MkdirAll(outputDir, 0o755); mkDirErr != nil {
-		log.Fatalf("failed to create output directory: %v", err)
+		log.Fatalf("failed to create output directory: %v", mkDirErr)
 	}
 
 	job := mosaic.Job{

@@ -1,6 +1,7 @@
 package executor
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"os/exec"
@@ -42,8 +43,6 @@ func (r *RealCommandExecutor) ExecuteWithProgress(ctx context.Context, progress 
 	}
 
 	if progress != nil {
-		// This is a simplified implementation. In a real scenario, we'd use cmd.StdoutPipe()
-		// and read from it in a goroutine.
 		stdoutPipe, err := cmd.StdoutPipe()
 		if err != nil {
 			return nil, nil, err
@@ -58,17 +57,11 @@ func (r *RealCommandExecutor) ExecuteWithProgress(ctx context.Context, progress 
 		go func() {
 			defer wg.Done()
 			defer close(progress)
-			buf := make([]byte, 1024)
-			for {
-				n, err := stdoutPipe.Read(buf)
-				if n > 0 {
-					data := buf[:n]
-					out.Write(data)
-					progress <- string(data)
-				}
-				if err != nil {
-					break
-				}
+			scanner := bufio.NewScanner(stdoutPipe)
+			for scanner.Scan() {
+				line := scanner.Text()
+				out.WriteString(line + "\n")
+				progress <- line
 			}
 		}()
 
@@ -102,7 +95,9 @@ func (r *RealCommandExecutor) ExecuteWithProgress(ctx context.Context, progress 
 	usage := &Usage{
 		UserTime:   cmd.ProcessState.UserTime().Seconds(),
 		SystemTime: cmd.ProcessState.SystemTime().Seconds(),
-		MaxMemory:  cmd.ProcessState.SysUsage().(*syscall.Rusage).Maxrss,
+	}
+	if ru, ok := cmd.ProcessState.SysUsage().(*syscall.Rusage); ok {
+		usage.MaxMemory = ru.Maxrss
 	}
 
 	return out.Bytes(), usage, nil

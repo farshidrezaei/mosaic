@@ -631,3 +631,78 @@ func TestNilProgressHandler(t *testing.T) {
 		t.Fatalf("EncodeDashWithExecutor failed: %v", err)
 	}
 }
+
+func TestJobValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		job     Job
+		wantErr bool
+	}{
+		{
+			name:    "empty input",
+			job:     Job{Input: "", OutputDir: "/tmp/out"},
+			wantErr: true,
+		},
+		{
+			name:    "whitespace input",
+			job:     Job{Input: "   ", OutputDir: "/tmp/out"},
+			wantErr: true,
+		},
+		{
+			name:    "empty output dir",
+			job:     Job{Input: "test.mp4", OutputDir: ""},
+			wantErr: true,
+		},
+		{
+			name:    "whitespace output dir",
+			job:     Job{Input: "test.mp4", OutputDir: "   "},
+			wantErr: true,
+		},
+		{
+			name:    "valid job",
+			job:     Job{Input: "test.mp4", OutputDir: "/tmp/out"},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.job.validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+
+	// Test validate via EncodeHlsWithExecutor & EncodeDashWithExecutor
+	invalidJob := Job{Input: "", OutputDir: ""}
+	if _, err := EncodeHlsWithExecutor(context.Background(), invalidJob, &fullMock{}); err == nil {
+		t.Error("expected EncodeHlsWithExecutor to fail validation, got nil")
+	}
+	if _, err := EncodeDashWithExecutor(context.Background(), invalidJob, &fullMock{}); err == nil {
+		t.Error("expected EncodeDashWithExecutor to fail validation, got nil")
+	}
+}
+
+func TestFunctionalOptions(t *testing.T) {
+	o := defaultOptions()
+	WithNormalizeOrientation()(o)
+	if !o.normalizeOrientation {
+		t.Error("expected normalizeOrientation to be true")
+	}
+
+	WithNormalizeOrientation(false)(o)
+	if o.normalizeOrientation {
+		t.Error("expected normalizeOrientation to be false")
+	}
+
+	WithNVENC()(o)
+	if o.gpu != config.GPU_NVENC {
+		t.Errorf("expected GPU_NVENC, got %v", o.gpu)
+	}
+
+	WithVideoToolbox()(o)
+	if o.gpu != config.GPU_VIDEOTOOLBOX {
+		t.Errorf("expected GPU_VIDEOTOOLBOX, got %v", o.gpu)
+	}
+}

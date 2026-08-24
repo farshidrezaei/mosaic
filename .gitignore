@@ -3,3 +3,23 @@ coverage.html
 coverage.out
 /output/
 /exp.go
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Go
+*.test
+*.prof
+
+# Temp
+*.tmp
+.mosaic-orientation-*
+
+# Editor
+*.swp
+*~
+.vscode/
+
+# Codex
+.codex

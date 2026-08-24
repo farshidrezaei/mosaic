@@ -1,5 +1,10 @@
 package mosaic
 
+import (
+	"errors"
+	"strings"
+)
+
 // Profile represents an encoding profile that determines segment duration and latency settings.
 type Profile string
 
@@ -35,4 +40,14 @@ type Job struct {
 	ProgressHandler ProgressHandler
 	// Profile determines the segment duration and latency characteristics of the output.
 	Profile Profile
+}
+
+func (j Job) validate() error {
+	if strings.TrimSpace(j.Input) == "" {
+		return errors.New("job input is required")
+	}
+	if strings.TrimSpace(j.OutputDir) == "" {
+		return errors.New("job output directory is required")
+	}
+	return nil
 }

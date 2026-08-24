@@ -10,6 +10,30 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+## [v1.6.0] - 2026-08-24
+
+### Added
+
+- Job input validation with clear error messages for empty `Input` or `OutputDir`.
+
+### Changed
+
+- Replaced raw byte-chunk progress reading with `bufio.Scanner` for correct line-buffered FFmpeg progress parsing.
+- Made `-preset medium` conditional on `libx264` codec only; GPU encoders (NVENC, VAAPI, VideoToolbox) no longer receive an incompatible preset.
+- HLS playlist type is now `vod` only for VOD profiles; Live profiles omit `hls_playlist_type` to allow proper low-latency behavior.
+- Audio probe errors on context cancellation now propagate instead of being silently ignored.
+- Improved FPS parsing to validate both numerator and denominator before division.
+- Added safe type assertion for `syscall.Rusage` in executor to prevent panic on non-Linux platforms.
+- Updated CI workflow to `actions/checkout@v4`, `actions/setup-go@v5`, `golangci-lint-action@v6`, added `go vet` and `-race` flag.
+- Expanded `.gitignore` with OS, editor, and temp file patterns.
+
+### Fixed
+
+- Fixed progress data corruption caused by byte-level reads splitting FFmpeg output lines mid-stream.
+- Fixed FFmpeg failure when using GPU hardware encoders due to invalid `-preset medium` argument.
+- Fixed HLS Live profile incorrectly setting `hls_playlist_type vod`.
+- Fixed wrong error variable in `examples/advanced_dash` error message.
+
 ## [v1.5.2] - 2026-06-13
 
 ### Added
@@ -29,6 +53,7 @@ All notable changes to this project are documented here.
 ### Fixed
 
 - Prevented orientation-normalization MP4 failures on inputs with unsupported extra streams (for example data/timecode tracks) by mapping only video/audio during normalization remux/rotate steps.
+
 ## [v1.5.0] - 2026-06-08
 
 ### Added

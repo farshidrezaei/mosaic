@@ -1,6 +1,6 @@
 # Mosaic
 <p align="center">
-  <img src="assets/Picsart_26-06-30_20-22-27-132.jpg" width="180">
+  <img src="assets/logo.jpg" width="180">
 </p>
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/farshidrezaei/mosaic)](https://goreportcard.com/report/github.com/farshidrezaei/mosaic)

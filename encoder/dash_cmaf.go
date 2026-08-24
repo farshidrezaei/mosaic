@@ -79,8 +79,13 @@ func EncodeDASHCMAFWithExecutor(
 			fmt.Sprintf("-level:v:%d", i), r.Level,
 
 			"-pix_fmt", "yuv420p",
-			"-preset", "medium",
+		)
 
+		if codec == "libx264" {
+			args = append(args, "-preset", "medium")
+		}
+
+		args = append(args,
 			"-g", strconv.Itoa(gop),
 			"-keyint_min", strconv.Itoa(gop),
 			"-sc_threshold", "0",

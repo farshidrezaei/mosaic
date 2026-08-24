@@ -100,7 +100,7 @@ func InputWithExecutor(ctx context.Context, input string, exec executor.CommandE
 	}
 
 	// audio check
-	aout, _, err := exec.Execute(
+	aout, _, audioErr := exec.Execute(
 		ctx,
 		"ffprobe",
 		"-v", "error",
@@ -109,7 +109,9 @@ func InputWithExecutor(ctx context.Context, input string, exec executor.CommandE
 		"-of", "csv=p=0",
 		input,
 	)
-	_ = err // Ignore audio probe errors
+	if audioErr != nil && ctx.Err() != nil {
+		return VideoInfo{}, ctx.Err()
+	}
 	info.HasAudio = strings.TrimSpace(string(aout)) != ""
 
 	return info, nil
@@ -120,9 +122,9 @@ func parseFPS(rate string) float64 {
 	if len(parts) != 2 {
 		return 30
 	}
-	n, _ := strconv.ParseFloat(parts[0], 64)
-	d, _ := strconv.ParseFloat(parts[1], 64)
-	if d == 0 {
+	n, err1 := strconv.ParseFloat(parts[0], 64)
+	d, err2 := strconv.ParseFloat(parts[1], 64)
+	if err1 != nil || err2 != nil || d == 0 || n < 0 {
 		return 30
 	}
 	return n / d

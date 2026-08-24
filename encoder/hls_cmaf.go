@@ -91,8 +91,13 @@ func EncodeHLSCMAFWithExecutor(
 			fmt.Sprintf("-level:v:%d", i), r.Level,
 
 			"-pix_fmt", "yuv420p",
-			"-preset", "medium",
+		)
 
+		if codec == "libx264" {
+			args = append(args, "-preset", "medium")
+		}
+
+		args = append(args,
 			"-g", strconv.Itoa(gop),
 			"-keyint_min", strconv.Itoa(gop),
 			"-sc_threshold", "0",
@@ -120,8 +125,11 @@ func EncodeHLSCMAFWithExecutor(
 	args = append(args,
 		"-f", "hls",
 		"-hls_segment_type", "fmp4",
-		"-hls_playlist_type", "vod",
 	)
+
+	if !profile.LowLatency {
+		args = append(args, "-hls_playlist_type", "vod")
+	}
 
 	if profile.LowLatency {
 		args = append(args,
