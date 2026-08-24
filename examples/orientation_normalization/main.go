@@ -13,6 +13,8 @@ import (
 )
 
 func main() {
+	var err error
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("failed to get current directory: %v", err)
@@ -32,9 +34,9 @@ func main() {
 	ctx := context.Background()
 
 	// 1. Probe input video orientation metadata
-	info, err := probe.Input(ctx, inputPath)
-	if err != nil {
-		log.Fatalf("failed to probe video: %v", err)
+	info, probeErr := probe.Input(ctx, inputPath)
+	if probeErr != nil {
+		log.Fatalf("failed to probe video: %v", probeErr)
 	}
 
 	fmt.Printf("Source Video Metadata:\n")
@@ -50,8 +52,9 @@ func main() {
 
 	fmt.Printf("Running standalone orientation normalization...\n")
 	startNorm := time.Now()
-	if normErr := mosaic.NormalizeVideoOrientation(ctx, inputPath, normalizedPath); normErr != nil {
-		log.Fatalf("NormalizeVideoOrientation failed: %v", normErr)
+	err = mosaic.NormalizeVideoOrientation(ctx, inputPath, normalizedPath)
+	if err != nil {
+		log.Fatalf("NormalizeVideoOrientation failed: %v", err)
 	}
 	fmt.Printf("Normalized video saved in %s (%s)\n\n", normalizedPath, time.Since(startNorm).Round(time.Millisecond))
 
@@ -61,8 +64,8 @@ func main() {
 		Input:     inputPath,
 		OutputDir: outputDir,
 		Profile:   mosaic.ProfileVOD,
-		ProgressHandler: func(info mosaic.ProgressInfo) {
-			fmt.Printf("\r[HLS Normalized] [%5.1f%%] time=%s bitrate=%s", info.Percentage, info.CurrentTime, info.Bitrate)
+		ProgressHandler: func(pInfo mosaic.ProgressInfo) {
+			fmt.Printf("\r[HLS Normalized] [%5.1f%%] time=%s bitrate=%s", pInfo.Percentage, pInfo.CurrentTime, pInfo.Bitrate)
 		},
 	}
 
