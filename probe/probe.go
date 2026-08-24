@@ -19,6 +19,8 @@ type VideoInfo struct {
 	Height int
 	// FPS is the average frame rate of the video (e.g., 23.976, 30.0, 60.0).
 	FPS float64
+	// Duration is the total duration of the video in seconds.
+	Duration float64
 	// HasAudio is true if the video file contains at least one audio stream.
 	HasAudio bool
 	// Rotation is the normalized clockwise rotation in degrees (0, 90, 180, 270).
@@ -58,7 +60,7 @@ func InputWithExecutor(ctx context.Context, input string, exec executor.CommandE
 	args := []string{
 		"-v", "error",
 		"-select_streams", "v:0",
-		"-show_entries", "stream=width,height,avg_frame_rate:stream_tags=rotate:stream_side_data=rotation",
+		"-show_entries", "stream=width,height,avg_frame_rate,duration:format=duration:stream_tags=rotate:stream_side_data=rotation",
 		"-of", "json",
 		input,
 	}
@@ -68,11 +70,15 @@ func InputWithExecutor(ctx context.Context, input string, exec executor.CommandE
 	}
 
 	var data struct {
+		Format struct {
+			Duration string `json:"duration"`
+		} `json:"format"`
 		Streams []struct {
-			FPS  string `json:"avg_frame_rate"`
 			Tags struct {
 				Rotate string `json:"rotate"`
 			} `json:"tags"`
+			Duration     string `json:"duration"`
+			FPS          string `json:"avg_frame_rate"`
 			SideDataList []struct {
 				Rotation float64 `json:"rotation"`
 			} `json:"side_data_list"`
@@ -90,9 +96,10 @@ func InputWithExecutor(ctx context.Context, input string, exec executor.CommandE
 	}
 
 	info := VideoInfo{
-		Width:  data.Streams[0].Width,
-		Height: data.Streams[0].Height,
-		FPS:    parseFPS(data.Streams[0].FPS),
+		Width:    data.Streams[0].Width,
+		Height:   data.Streams[0].Height,
+		FPS:      parseFPS(data.Streams[0].FPS),
+		Duration: parseDuration(data.Streams[0].Duration, data.Format.Duration),
 		Rotation: detectRotation(
 			data.Streams[0].Tags.Rotate,
 			data.Streams[0].SideDataList,
@@ -115,6 +122,20 @@ func InputWithExecutor(ctx context.Context, input string, exec executor.CommandE
 	info.HasAudio = strings.TrimSpace(string(aout)) != ""
 
 	return info, nil
+}
+
+func parseDuration(streamDur, formatDur string) float64 {
+	if s := strings.TrimSpace(formatDur); s != "" {
+		if d, err := strconv.ParseFloat(s, 64); err == nil && d > 0 {
+			return d
+		}
+	}
+	if s := strings.TrimSpace(streamDur); s != "" {
+		if d, err := strconv.ParseFloat(s, 64); err == nil && d > 0 {
+			return d
+		}
+	}
+	return 0
 }
 
 func parseFPS(rate string) float64 {

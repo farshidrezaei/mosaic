@@ -10,6 +10,23 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+## [v1.7.0] - 2026-08-25
+
+### Added
+
+- Real-time progress percentage calculation in `ProgressInfo.Percentage` computed from probed media duration and encoded timestamps.
+- Added `Duration` metadata field to `probe.VideoInfo`.
+- Added `BFrames` configuration to `config.Profile` (defaults to `0`) and `WithBFrames(n)` functional option.
+- Added optional `WithScaleBitrateWithFPS()` option to dynamically adjust bitrate caps for high-framerate (>30 FPS) content.
+- Added `AddSequentialResponse` and queue support to `executor.MockCommandExecutor` for multi-step mock testing.
+- Added maintainer contact email and GitHub Security Advisories link in `SECURITY.md`.
+
+### Changed
+
+- Unified DASH encoding pipeline to use single-pass `filter_complex` (`split -> scale -> setsar=1`) matching HLS behavior.
+- Added `-bf` flag to DASH video stream arguments.
+- Enforced `golangci-lint run` as a mandatory pre-commit contract across all documentation.
+
 ## [v1.6.0] - 2026-08-24
 
 ### Added

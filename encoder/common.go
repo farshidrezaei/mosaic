@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -68,4 +69,33 @@ func ParseProgress(raw string) map[string]string {
 		}
 	}
 	return progress
+}
+
+// ParseOutTimeSeconds converts FFmpeg progress timestamps (out_time_us, out_time_ms, or out_time) to seconds.
+func ParseOutTimeSeconds(m map[string]string) float64 {
+	if usStr, ok := m["out_time_us"]; ok && usStr != "" {
+		if us, err := strconv.ParseInt(strings.TrimSpace(usStr), 10, 64); err == nil && us >= 0 {
+			return float64(us) / 1000000.0
+		}
+	}
+
+	if msStr, ok := m["out_time_ms"]; ok && msStr != "" {
+		if ms, err := strconv.ParseInt(strings.TrimSpace(msStr), 10, 64); err == nil && ms >= 0 {
+			return float64(ms) / 1000.0
+		}
+	}
+
+	if outTime, ok := m["out_time"]; ok && outTime != "" {
+		parts := strings.Split(strings.TrimSpace(outTime), ":")
+		if len(parts) == 3 {
+			h, errH := strconv.ParseFloat(parts[0], 64)
+			min, errM := strconv.ParseFloat(parts[1], 64)
+			sec, errS := strconv.ParseFloat(parts[2], 64)
+			if errH == nil && errM == nil && errS == nil {
+				return h*3600.0 + min*60.0 + sec
+			}
+		}
+	}
+
+	return 0
 }

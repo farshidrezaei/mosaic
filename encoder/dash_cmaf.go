@@ -42,6 +42,7 @@ func EncodeDASHCMAFWithExecutor(
 		return nil, err
 	}
 
+	filter := buildFilterGraph(l)
 	gop := calcGOP(info.FPS, profile.SegmentDuration)
 
 	args := []string{
@@ -59,6 +60,8 @@ func EncodeDASHCMAFWithExecutor(
 		args = append(args, "-threads", strconv.Itoa(opts.Threads))
 	}
 
+	args = append(args, "-filter_complex", filter)
+
 	// ---------- VIDEO ----------
 	for i, r := range l {
 		codec := "libx264"
@@ -72,7 +75,7 @@ func EncodeDASHCMAFWithExecutor(
 		}
 
 		args = append(args,
-			"-map", "0:v:0",
+			"-map", fmt.Sprintf("[v%do]", i),
 
 			fmt.Sprintf("-c:v:%d", i), codec,
 			fmt.Sprintf("-profile:v:%d", i), r.Profile,
@@ -89,11 +92,10 @@ func EncodeDASHCMAFWithExecutor(
 			"-g", strconv.Itoa(gop),
 			"-keyint_min", strconv.Itoa(gop),
 			"-sc_threshold", "0",
+			"-bf", fmt.Sprintf("%d", r.BFrames),
 
 			fmt.Sprintf("-maxrate:v:%d", i), fmt.Sprintf("%dk", r.MaxRate),
 			fmt.Sprintf("-bufsize:v:%d", i), fmt.Sprintf("%dk", r.BufSize),
-
-			fmt.Sprintf("-s:v:%d", i), fmt.Sprintf("%dx%d", r.Width, r.Height),
 		)
 		args = appendVideoRotationMetadataReset(args, i)
 	}

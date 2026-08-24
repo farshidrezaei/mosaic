@@ -8,7 +8,8 @@ import (
 
 // Build generates an initial encoding ladder based on the source video's height.
 // It creates standard quality rungs while preserving the source display aspect ratio.
-func Build(info probe.VideoInfo) []Rendition {
+// Optional bframes parameter configures the number of B-frames for non-baseline profiles (default 0).
+func Build(info probe.VideoInfo, bframes ...int) []Rendition {
 	var out []Rendition
 	sourceWidth := info.DisplayWidth()
 	sourceHeight := info.DisplayHeight()
@@ -16,9 +17,18 @@ func Build(info probe.VideoInfo) []Rendition {
 		return out
 	}
 
+	bf := 0
+	if len(bframes) > 0 && bframes[0] >= 0 {
+		bf = bframes[0]
+	}
+
 	makeRendition := func(height, maxRate, bufSize int, profile, level string) Rendition {
 		height = evenDimension(height)
 		width := scaledWidth(sourceWidth, sourceHeight, height)
+		rBFrames := bf
+		if profile == "baseline" {
+			rBFrames = 0
+		}
 		return Rendition{
 			Width:   width,
 			Height:  height,
@@ -26,7 +36,7 @@ func Build(info probe.VideoInfo) []Rendition {
 			BufSize: bufSize,
 			Profile: profile,
 			Level:   level,
-			BFrames: 0,
+			BFrames: rBFrames,
 		}
 	}
 

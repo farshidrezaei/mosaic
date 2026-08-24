@@ -705,4 +705,53 @@ func TestFunctionalOptions(t *testing.T) {
 	if o.gpu != config.GPU_VIDEOTOOLBOX {
 		t.Errorf("expected GPU_VIDEOTOOLBOX, got %v", o.gpu)
 	}
+
+	WithBFrames(2)(o)
+	if o.bframes != 2 {
+		t.Errorf("expected bframes 2, got %d", o.bframes)
+	}
+
+	WithScaleBitrateWithFPS()(o)
+	if !o.scaleBitrateWithFPS {
+		t.Error("expected scaleBitrateWithFPS to be true")
+	}
+
+	WithScaleBitrateWithFPS(false)(o)
+	if o.scaleBitrateWithFPS {
+		t.Error("expected scaleBitrateWithFPS to be false")
+	}
+}
+
+func TestProgressPercentageCalculation(t *testing.T) {
+	mock := &fullMock{
+		probeVideoResponse: executor.MockResponse{
+			Output: []byte(`{"streams":[{"width":1920,"height":1080,"avg_frame_rate":"30/1","duration":"10.000000"}]}`),
+			Err:    nil,
+		},
+		probeAudioResponse: executor.MockResponse{Output: []byte("0"), Err: nil},
+		ffmpegResponse:     executor.MockResponse{Output: []byte(""), Err: nil},
+		progressData: []string{
+			"frame=150\nout_time=00:00:05.000000\nprogress=continue\n",
+		},
+	}
+
+	var capturedPercentage float64
+	job := Job{
+		Input:     "test.mp4",
+		OutputDir: filepath.Join(t.TempDir(), "hls"),
+		Profile:   ProfileVOD,
+		ProgressHandler: func(info ProgressInfo) {
+			capturedPercentage = info.Percentage
+		},
+	}
+
+	_, err := EncodeHlsWithExecutor(context.Background(), job, mock)
+	if err != nil {
+		t.Fatalf("EncodeHlsWithExecutor failed: %v", err)
+	}
+
+	// 5.0 seconds out of 10.0 seconds total duration = 50.0%
+	if capturedPercentage != 50.0 {
+		t.Errorf("expected progress percentage 50.0, got %f", capturedPercentage)
+	}
 }

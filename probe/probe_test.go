@@ -45,3 +45,46 @@ func TestInput(t *testing.T) {
 		t.Log("Input() succeeded (ffprobe available)")
 	}
 }
+
+func TestParseDuration(t *testing.T) {
+	tests := []struct {
+		name      string
+		streamDur string
+		formatDur string
+		expected  float64
+	}{
+		{
+			name:      "duration from format",
+			streamDur: "5.0",
+			formatDur: "10.5",
+			expected:  10.5,
+		},
+		{
+			name:      "duration from stream when format is empty",
+			streamDur: "12.34",
+			formatDur: "",
+			expected:  12.34,
+		},
+		{
+			name:      "empty duration",
+			streamDur: "",
+			formatDur: "",
+			expected:  0.0,
+		},
+		{
+			name:      "invalid duration string",
+			streamDur: "N/A",
+			formatDur: "invalid",
+			expected:  0.0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := parseDuration(tt.streamDur, tt.formatDur)
+			if got != tt.expected {
+				t.Errorf("parseDuration(%q, %q) = %v, want %v", tt.streamDur, tt.formatDur, got, tt.expected)
+			}
+		})
+	}
+}

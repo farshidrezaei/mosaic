@@ -1,12 +1,14 @@
 package config
 
 // Profile defines the technical configuration for an encoding profile,
-// including segment duration and low-latency settings.
+// including segment duration, low-latency settings, and B-frame count.
 type Profile struct {
 	// SegmentDuration is the duration of each media segment in seconds.
 	SegmentDuration int
 	// LowLatency indicates if low-latency features (like chunked transfer) should be enabled.
 	LowLatency bool
+	// BFrames specifies the number of B-frames between reference frames (defaults to 0).
+	BFrames int
 }
 
 // GPUType represents a specific hardware acceleration backend supported by FFmpeg.
@@ -25,10 +27,12 @@ const (
 var VOD = Profile{
 	SegmentDuration: 5,
 	LowLatency:      false,
+	BFrames:         0,
 }
 
 // LIVE is the default configuration for low-latency Live streaming content.
 var LIVE = Profile{
 	SegmentDuration: 2,
 	LowLatency:      true,
+	BFrames:         0,
 }

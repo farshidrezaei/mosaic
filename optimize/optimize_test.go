@@ -29,11 +29,28 @@ func TestCapBitrate(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := capBitrate(tt.height, tt.bitrate)
+			result := capBitrate(tt.height, tt.bitrate, 0, false)
 			if result != tt.expected {
 				t.Errorf("expected %d, got %d", tt.expected, result)
 			}
 		})
+	}
+}
+
+func TestCapBitrateWithFPS(t *testing.T) {
+	// For 60fps with scaling enabled (factor = 60/30 = 2.0 capped at 1.5):
+	// 1080p cap becomes 5000 * 1.5 = 7500
+	// 720p cap becomes 3000 * 1.5 = 4500
+	// Low cap becomes 1000 * 1.5 = 1500
+
+	if got := capBitrate(1080, 8000, 60.0, true); got != 7500 {
+		t.Errorf("expected 1080p@60fps cap 7500, got %d", got)
+	}
+	if got := capBitrate(720, 5000, 60.0, true); got != 4500 {
+		t.Errorf("expected 720p@60fps cap 4500, got %d", got)
+	}
+	if got := capBitrate(360, 2000, 60.0, true); got != 1500 {
+		t.Errorf("expected 360p@60fps cap 1500, got %d", got)
 	}
 }
 
@@ -193,5 +210,22 @@ func TestTrim(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestApplyWithFPS(t *testing.T) {
+	in := []ladder.Rendition{
+		{Width: 1920, Height: 1080, MaxRate: 8000, BufSize: 16000, Profile: "main", Level: "4.0"},
+	}
+
+	out := Apply(in, WithFPS(60.0))
+	if len(out) != 1 {
+		t.Fatalf("expected 1 rendition, got %d", len(out))
+	}
+	if out[0].MaxRate != 7500 {
+		t.Errorf("expected 1080p@60fps MaxRate 7500, got %d", out[0].MaxRate)
+	}
+	if out[0].BufSize != 15000 {
+		t.Errorf("expected BufSize 15000, got %d", out[0].BufSize)
 	}
 }

@@ -121,7 +121,13 @@ DASH output uses FFmpeg's DASH muxer:
 -use_timeline 1
 ```
 
-Video renditions are mapped from the original video stream and sized with per-stream `-s:v:N`.
+Video processing uses the same single-pass filter graph as HLS:
+
+```text
+split=N
+scale=width:height
+setsar=1
+```
 
 Generated manifest:
 
@@ -203,12 +209,10 @@ Rules:
 
 Mosaic clears rotation metadata for generated video streams to avoid double-rotation in players.
 
-It sets sample aspect ratio to `1` in HLS filter graphs.
+It sets sample aspect ratio to `1` in HLS and DASH filter graphs.
 
 ## Known Limitations
 
 - Default codec is H.264.
 - Audio is always AAC at `96k` when present.
 - Per-title encoding is not implemented.
-- Percentage progress is not computed yet.
-- DASH does not currently use the same filter graph path as HLS.

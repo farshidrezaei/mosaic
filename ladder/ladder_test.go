@@ -151,3 +151,22 @@ func TestBuild(t *testing.T) {
 		})
 	}
 }
+
+func TestBuildWithBFrames(t *testing.T) {
+	info := probe.VideoInfo{Width: 1920, Height: 1080, FPS: 30.0}
+	rungs := Build(info, 3)
+
+	if len(rungs) != 3 {
+		t.Fatalf("expected 3 rungs, got %d", len(rungs))
+	}
+
+	// Main profile rungs should receive BFrames = 3
+	if rungs[0].BFrames != 3 || rungs[1].BFrames != 3 {
+		t.Errorf("expected 1080p and 720p to have 3 BFrames, got %d and %d", rungs[0].BFrames, rungs[1].BFrames)
+	}
+
+	// Baseline profile rung must always have BFrames = 0
+	if rungs[2].BFrames != 0 {
+		t.Errorf("expected 360p baseline to have 0 BFrames, got %d", rungs[2].BFrames)
+	}
+}

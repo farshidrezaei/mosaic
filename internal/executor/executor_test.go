@@ -66,6 +66,28 @@ func TestMockExecutorExecuteNoResponse(t *testing.T) {
 	}
 }
 
+func TestMockExecutorSequentialResponses(t *testing.T) {
+	mock := NewMockExecutor()
+	mock.AddSequentialResponse("ffprobe", MockResponse{Output: []byte("step1")})
+	mock.AddSequentialResponse("ffprobe", MockResponse{Output: []byte("step2")})
+	mock.Responses["ffprobe"] = MockResponse{Output: []byte("fallback")}
+
+	out1, _, err := mock.Execute(context.Background(), "ffprobe")
+	if err != nil || string(out1) != "step1" {
+		t.Errorf("expected 'step1', got '%s', err: %v", string(out1), err)
+	}
+
+	out2, _, err := mock.Execute(context.Background(), "ffprobe")
+	if err != nil || string(out2) != "step2" {
+		t.Errorf("expected 'step2', got '%s', err: %v", string(out2), err)
+	}
+
+	out3, _, err := mock.Execute(context.Background(), "ffprobe")
+	if err != nil || string(out3) != "fallback" {
+		t.Errorf("expected 'fallback', got '%s', err: %v", string(out3), err)
+	}
+}
+
 func TestMockExecutorGetCallCount(t *testing.T) {
 	mock := NewMockExecutor()
 	mock.Responses["cmd"] = MockResponse{Output: []byte("ok"), Err: nil}

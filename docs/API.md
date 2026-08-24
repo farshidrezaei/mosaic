@@ -71,7 +71,7 @@ type ProgressInfo struct {
 }
 ```
 
-`Percentage` is currently reserved and set to `0`.
+`Percentage` is calculated automatically based on the probed media duration and encoded progress (0.0 to 100.0).
 
 ## HLS Encoding
 
@@ -182,6 +182,22 @@ func WithThreads(n int) Option
 Sets FFmpeg `-threads`.
 
 `0` means FFmpeg auto-selects thread behavior.
+
+### WithBFrames
+
+```go
+func WithBFrames(n int) Option
+```
+
+Sets the number of B-frames for non-baseline renditions (default is `0`).
+
+### WithScaleBitrateWithFPS
+
+```go
+func WithScaleBitrateWithFPS(enabled ...bool) Option
+```
+
+Enables optional bitrate scaling for high-framerate inputs (>30 FPS).
 
 ### WithLogLevel
 

@@ -221,7 +221,7 @@ Set `Job.ProgressHandler` to receive parsed values from FFmpeg `-progress`.
 
 ```go
 job.ProgressHandler = func(info mosaic.ProgressInfo) {
-	fmt.Printf("time=%s bitrate=%s speed=%s\n", info.CurrentTime, info.Bitrate, info.Speed)
+	fmt.Printf("progress=%.1f%% time=%s bitrate=%s speed=%s\n", info.Percentage, info.CurrentTime, info.Bitrate, info.Speed)
 }
 ```
 
@@ -230,7 +230,7 @@ Fields:
 - `CurrentTime`: FFmpeg `out_time`
 - `Bitrate`: FFmpeg `bitrate`
 - `Speed`: FFmpeg `speed`
-- `Percentage`: currently reserved and reported as `0`
+- `Percentage`: real-time calculated percentage (0.0 to 100.0) based on source duration
 
 ## Hardware Encoding
 
@@ -283,6 +283,8 @@ func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandE
 func NormalizeVideoOrientation(ctx context.Context, inputPath, outputPath string) error
 
 func WithThreads(n int) Option
+func WithBFrames(n int) Option
+func WithScaleBitrateWithFPS(enabled ...bool) Option
 func WithGPU(t ...config.GPUType) Option
 func WithNormalizeOrientation(enabled ...bool) Option
 func WithNVENC() Option
@@ -324,7 +326,6 @@ GOCACHE=/tmp/go-build go vet ./...
 
 # Coverage
 GOCACHE=/tmp/go-build go test ./... -cover
-```
 
 # Lint (Mandatory)
 golangci-lint run
@@ -369,7 +370,6 @@ mosaic/
 
 - H.264/AAC are the default codecs.
 - HEVC and AV1 are planned but not implemented as public options yet.
-- `ProgressInfo.Percentage` is reserved and not computed yet.
 - Cloud uploads, DRM packaging, thumbnails, and sprites are planned but not implemented.
 - Hardware encoder options assume FFmpeg and the host system are already configured.
 

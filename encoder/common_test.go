@@ -88,3 +88,46 @@ func TestCalcGOPProperties(t *testing.T) {
 		}
 	}
 }
+
+func TestParseOutTimeSeconds(t *testing.T) {
+	tests := []struct {
+		input    map[string]string
+		name     string
+		expected float64
+	}{
+		{
+			name:     "from out_time_us",
+			input:    map[string]string{"out_time_us": "12345678"},
+			expected: 12.345678,
+		},
+		{
+			name:     "from out_time_ms",
+			input:    map[string]string{"out_time_ms": "12345"},
+			expected: 12.345,
+		},
+		{
+			name:     "from out_time string",
+			input:    map[string]string{"out_time": "01:02:03.500000"},
+			expected: 3723.5, // 1*3600 + 2*60 + 3.5
+		},
+		{
+			name:     "empty map",
+			input:    map[string]string{},
+			expected: 0.0,
+		},
+		{
+			name:     "malformed out_time",
+			input:    map[string]string{"out_time": "invalid"},
+			expected: 0.0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ParseOutTimeSeconds(tt.input)
+			if got != tt.expected {
+				t.Errorf("ParseOutTimeSeconds() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}

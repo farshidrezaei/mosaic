@@ -26,7 +26,9 @@ type options struct {
 	gpu                  config.GPUType
 	logLevel             string
 	threads              int
+	bframes              int
 	normalizeOrientation bool
+	scaleBitrateWithFPS  bool
 }
 
 func defaultOptions() *options {
@@ -35,6 +37,7 @@ func defaultOptions() *options {
 		gpu:      "",
 		logLevel: "warning",
 		logger:   slog.Default(),
+		bframes:  0,
 	}
 }
 
@@ -55,6 +58,24 @@ func WithNormalizeOrientation(enabled ...bool) Option {
 func WithThreads(n int) Option {
 	return func(o *options) {
 		o.threads = n
+	}
+}
+
+// WithBFrames sets the number of B-frames to use for encoding non-baseline renditions (default 0).
+func WithBFrames(n int) Option {
+	return func(o *options) {
+		o.bframes = n
+	}
+}
+
+// WithScaleBitrateWithFPS enables optional bitrate scaling for high framerate videos (>30 FPS).
+func WithScaleBitrateWithFPS(enabled ...bool) Option {
+	return func(o *options) {
+		if len(enabled) == 0 {
+			o.scaleBitrateWithFPS = true
+			return
+		}
+		o.scaleBitrateWithFPS = enabled[0]
 	}
 }
 
@@ -118,12 +139,6 @@ func initializeWithExecutor(ctx context.Context, job Job, exec executor.CommandE
 		return probe.VideoInfo{}, config.Profile{}, []ladder.Rendition{}, err
 	}
 
-	// build ladder
-	l := ladder.Build(info)
-
-	// cost optimizer
-	l = optimize.Apply(l)
-
 	// profile
 	var profile config.Profile
 	switch job.Profile {
@@ -133,10 +148,47 @@ func initializeWithExecutor(ctx context.Context, job Job, exec executor.CommandE
 		profile = config.VOD
 	}
 
+	if opts.bframes > 0 {
+		profile.BFrames = opts.bframes
+	}
+
+	// build ladder
+	l := ladder.Build(info, profile.BFrames)
+
+	// cost optimizer
+	if opts.scaleBitrateWithFPS {
+		l = optimize.Apply(l, optimize.WithFPS(info.FPS))
+	} else {
+		l = optimize.Apply(l)
+	}
+
 	opts.logger.Info("encoding variants", "count", len(l))
 
 	return info, profile, l, err
+}
 
+func buildProgressCallback(handler ProgressHandler, duration float64) func(map[string]string) {
+	if handler == nil {
+		return nil
+	}
+	return func(m map[string]string) {
+		var percentage float64
+		if duration > 0 {
+			currentSec := encoder.ParseOutTimeSeconds(m)
+			percentage = (currentSec / duration) * 100.0
+			if percentage > 100.0 {
+				percentage = 100.0
+			} else if percentage < 0.0 {
+				percentage = 0.0
+			}
+		}
+		handler(ProgressInfo{
+			Percentage:  percentage,
+			CurrentTime: m["out_time"],
+			Bitrate:     m["bitrate"],
+			Speed:       m["speed"],
+		})
+	}
 }
 
 // EncodeHls encodes the given job into HLS format with CMAF segments.
@@ -180,16 +232,7 @@ func EncodeHlsWithExecutor(ctx context.Context, job Job, exec executor.CommandEx
 		profile,
 		l,
 		exec,
-		func(m map[string]string) {
-			if job.ProgressHandler != nil {
-				job.ProgressHandler(ProgressInfo{
-					Percentage:  0,
-					CurrentTime: m["out_time"],
-					Bitrate:     m["bitrate"],
-					Speed:       m["speed"],
-				})
-			}
-		},
+		buildProgressCallback(job.ProgressHandler, info.Duration),
 		encoder.EncoderOptions{
 			Threads:  o.threads,
 			GPU:      o.gpu,
@@ -239,16 +282,7 @@ func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandE
 		profile,
 		l,
 		exec,
-		func(m map[string]string) {
-			if job.ProgressHandler != nil {
-				job.ProgressHandler(ProgressInfo{
-					Percentage:  0,
-					CurrentTime: m["out_time"],
-					Bitrate:     m["bitrate"],
-					Speed:       m["speed"],
-				})
-			}
-		},
+		buildProgressCallback(job.ProgressHandler, info.Duration),
 		encoder.EncoderOptions{
 			Threads:  o.threads,
 			GPU:      o.gpu,

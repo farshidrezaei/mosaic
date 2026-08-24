@@ -8,15 +8,17 @@ Mosaic is currently pre-1.0. Security fixes target the default branch unless a r
 
 Please do not open a public issue for sensitive security reports.
 
-Send a private report to the maintainer with:
+Send a private security report to:
+- **Maintainer Email**: `farshid.net1@gmail.com`
+- **GitHub Security Advisory**: [Report a vulnerability](https://github.com/farshidrezaei/mosaic/security/advisories/new)
+
+Include in your report:
 
 - a clear description of the vulnerability
 - affected versions or commits, if known
 - reproduction steps
 - impact assessment
 - any suggested mitigation
-
-If private contact details are not available, open a minimal public issue that asks for a private security contact without disclosing exploit details.
 
 ## Scope
 
