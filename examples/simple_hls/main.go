@@ -17,14 +17,8 @@ func main() {
 		log.Fatalf("failed to get current directory: %v", err)
 	}
 
-	inputPath := filepath.Join(cwd, "input.mp4")
-	outputDir := filepath.Join(cwd, "output", "hls_simple")
-
-	if _, statErr := os.Stat(inputPath); os.IsNotExist(statErr) {
-		log.Printf("input file not found: %s", inputPath)
-		log.Printf("place a video file named input.mp4 in %s", cwd)
-		return
-	}
+	inputPath := "https://api.tupic.com/assets/v1/assets/proxy?path=https%3A%2F%2Fstorage.tupic.com%2F2026%2F08%2F24%2F01a034de-b62d-7865-8c30-0cf805d5b002%2Fprivate%2Fhls%2Fuploaded%2Findex.m3u8%3FExpires%3D1787699912%26Signature%3DE2RsxdM8ZI-C8Arl4ueUKSkCrPYqBfU2YXEywL~5n~~WQHL0QCZcqPmAts3OmD9p1YMRVeg2Ac67X8N-jN4vtMDLd-JFO-GiA6s2VgwS~VddQYVqhqubarV9Bp4ucHl5Jm5XBWyYT1krtmVeFYcwCrk7oIAhsSF~Fc-D11aeJTXf~SU-K4HtnoJZdSX7QoqqH2uKlWNE6dSCOTGU0TjGzTxhV2ksvHhCnqfI6xCOnd2jftI9aKJiLPW4Y6611~MhpS8PmUssLFB4VYV1qnFnP91eJV7tlQgnEORgRi02NTJvmtvFTn2UknHWFxQS~tcKBitJWzYu5va7PNiVFaqPUw__%26Key-Pair-Id%3DK1R1M45CWKN77T"
+	outputDir := filepath.Join(cwd, "../output", "hls_simple")
 
 	if mkdirErr := os.MkdirAll(outputDir, 0o755); mkdirErr != nil {
 		log.Fatalf("failed to create output directory: %v", mkdirErr)

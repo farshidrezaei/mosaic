@@ -3,8 +3,8 @@ package mosaic
 import (
 	"context"
 	"fmt"
-
 	"log/slog"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -321,9 +321,19 @@ func prepareInputForEncoding(
 }
 
 func normalizedInputExt(inputPath string) string {
-	ext := filepath.Ext(inputPath)
-	if ext == "" || strings.Contains(ext, "?") {
+	cleanPath := inputPath
+	if u, err := url.Parse(inputPath); err == nil && u.Path != "" {
+		cleanPath = u.Path
+	}
+	if idx := strings.IndexAny(cleanPath, "?#"); idx != -1 {
+		cleanPath = cleanPath[:idx]
+	}
+
+	ext := strings.ToLower(filepath.Ext(cleanPath))
+	switch ext {
+	case ".mp4", ".mov", ".mkv", ".webm", ".avi", ".ts", ".m4v":
+		return ext
+	default:
 		return ".mp4"
 	}
-	return ext
 }

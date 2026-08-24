@@ -10,6 +10,12 @@ All notable changes to this project are documented here.
 
 ### Fixed
 
+## [v1.7.1] - 2026-08-25
+
+### Fixed
+
+- Fixed `file name too long` error when normalizing orientation on complex remote URLs with URL-encoded query strings (e.g. proxy URLs, signed URLs, CDN tokens). `normalizedInputExt` now cleanly parses URL paths and restricts intermediate file extensions to safe media types.
+
 ## [v1.7.0] - 2026-08-25
 
 ### Added
