@@ -43,11 +43,8 @@ GOCACHE=/tmp/go-build go vet ./...
 
 # Coverage
 GOCACHE=/tmp/go-build go test ./... -cover
-```
 
-Optional lint:
-
-```bash
+# Lint (Mandatory)
 golangci-lint run
 ```
 
@@ -59,6 +56,7 @@ golangci-lint run
 - Preserve executor-based testability.
 - Do not call FFmpeg or FFprobe directly outside `internal/executor`.
 - Add tests for behavior changes.
+- Ensure `golangci-lint run` reports 0 issues.
 - Keep exported types and functions documented.
 - Prefer small, reviewable commits.
 
@@ -98,11 +96,12 @@ If docs are intentionally unchanged, state why in the PR description.
 4. Run:
 
 ```bash
-GOCACHE=/tmp/go-build go test ./...
+GOCACHE=/tmp/go-build go test -v -race ./...
 GOCACHE=/tmp/go-build go vet ./...
+golangci-lint run
 ```
 
-5. Run `golangci-lint run` if available.
+5. Ensure all tests, vet, and `golangci-lint run` pass with zero issues.
 6. Update docs and changelog.
 7. Submit a PR with clear scope, reasoning, and test results.
 

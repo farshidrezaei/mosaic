@@ -26,13 +26,13 @@ GOCACHE=/tmp/go-build go vet ./...
 GOCACHE=/tmp/go-build go test ./... -cover
 ```
 
-## Lint
+## Lint (Mandatory)
 
 ```bash
 golangci-lint run
 ```
 
-Run lint before commits when `golangci-lint` is installed.
+Always run `golangci-lint run` and verify zero issues before committing or submitting a PR.
 
 ## Test Categories
 

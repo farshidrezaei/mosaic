@@ -326,9 +326,7 @@ GOCACHE=/tmp/go-build go vet ./...
 GOCACHE=/tmp/go-build go test ./... -cover
 ```
 
-Optional lint:
-
-```bash
+# Lint (Mandatory)
 golangci-lint run
 ```
 

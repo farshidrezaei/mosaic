@@ -41,6 +41,7 @@ For public API changes, also read:
 - Do not introduce unrelated refactors in bug-fix changes.
 - Keep exported Go identifiers documented.
 - Run `gofmt` on changed Go files.
+- Always run `golangci-lint run` and ensure zero lint issues before committing.
 
 ## Behavioral Contracts
 
@@ -74,17 +75,12 @@ Prefer mock executor tests for command construction.
 
 Use real FFmpeg smoke tests only when necessary and keep generated files under `/tmp`.
 
-## Standard Commands
+## Standard Commands (Must all pass before commit)
 
 ```bash
 gofmt -w <changed-go-files>
-GOCACHE=/tmp/go-build go test ./...
+GOCACHE=/tmp/go-build go test -v -race ./...
 GOCACHE=/tmp/go-build go vet ./...
-```
-
-Optional:
-
-```bash
 golangci-lint run
 ```
 
@@ -136,3 +132,4 @@ Non-standard landscape input `1280x718` should not be forced to `640x360`; it sh
 - Creating tests that write to `/output`.
 - Depending on real FFmpeg in a unit test when a mock executor is enough.
 - Updating README but forgetting `CHANGELOG.md`.
+- Committing changes without running `golangci-lint run`.
