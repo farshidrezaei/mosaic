@@ -3,63 +3,82 @@ package mosaic_test
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/farshidrezaei/mosaic"
 )
 
-// ExampleEncodeHls demonstrates packaging a video file into multi-rendition HLS (fMP4 CMAF).
-func ExampleEncodeHls() {
+// ExampleJob demonstrates constructing an encoding job configuration.
+func ExampleJob() {
 	job := mosaic.Job{
 		Input:     "input.mp4",
 		OutputDir: "./output/hls",
 		Profile:   mosaic.ProfileVOD,
-		ProgressHandler: func(info mosaic.ProgressInfo) {
-			fmt.Printf("Progress: %.1f%%\n", info.Percentage)
-		},
 	}
 
-	usage, err := mosaic.EncodeHls(
-		context.Background(),
+	fmt.Println("Input:", job.Input)
+	fmt.Println("OutputDir:", job.OutputDir)
+	fmt.Println("Profile:", job.Profile)
+	// Output:
+	// Input: input.mp4
+	// OutputDir: ./output/hls
+	// Profile: vod
+}
+
+// ExampleEncodeHls demonstrates packaging a video file into multi-rendition HLS (fMP4 CMAF).
+func ExampleEncodeHls() {
+	ctx := context.Background()
+	job := mosaic.Job{
+		Input:     "input.mp4",
+		OutputDir: "./output/hls",
+		Profile:   mosaic.ProfileVOD,
+	}
+
+	// Invoke EncodeHls with options
+	_, err := mosaic.EncodeHls(
+		ctx,
 		job,
 		mosaic.WithNormalizeOrientation(),
 		mosaic.WithThreads(4),
 	)
 	if err != nil {
-		log.Fatalf("HLS encoding failed: %v", err)
+		// In a real environment with input.mp4, this packages HLS streams
+		_ = err
 	}
-
-	fmt.Printf("Peak Memory: %d KB\n", usage.MaxMemory)
 }
 
 // ExampleEncodeDash demonstrates packaging a video file into MPEG-DASH CMAF format.
 func ExampleEncodeDash() {
+	ctx := context.Background()
 	job := mosaic.Job{
 		Input:     "input.mp4",
 		OutputDir: "./output/dash",
 		Profile:   mosaic.ProfileVOD,
 	}
 
+	// Invoke EncodeDash with options
 	_, err := mosaic.EncodeDash(
-		context.Background(),
+		ctx,
 		job,
 		mosaic.WithNormalizeOrientation(),
 		mosaic.WithBFrames(2),
 		mosaic.WithScaleBitrateWithFPS(),
 	)
 	if err != nil {
-		log.Fatalf("DASH encoding failed: %v", err)
+		// In a real environment with input.mp4, this packages DASH streams
+		_ = err
 	}
 }
 
 // ExampleNormalizeVideoOrientation demonstrates standalone video orientation normalization.
 func ExampleNormalizeVideoOrientation() {
+	ctx := context.Background()
 	err := mosaic.NormalizeVideoOrientation(
-		context.Background(),
+		ctx,
 		"input_rotated.mp4",
 		"output_normalized.mp4",
 	)
 	if err != nil {
-		log.Fatalf("Normalization failed: %v", err)
+		// In a real environment with input_rotated.mp4, this transposes frames
+		_ = err
 	}
 }
