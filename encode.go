@@ -33,6 +33,9 @@ import (
 	"github.com/farshidrezaei/mosaic/probe"
 )
 
+// Usage represents resource consumption metrics captured during an encoding run.
+type Usage = executor.Usage
+
 // Option defines a functional option for configuring encoding jobs.
 // It allows for flexible and extensible configuration of the encoding process.
 type Option func(*options)

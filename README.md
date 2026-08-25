@@ -55,8 +55,30 @@ Designed for server-side encoding workloads, background workers, and transcoding
 
 ## 📦 Installation
 
+### As a Go Library
 ```bash
 go get github.com/farshidrezaei/mosaic
+```
+
+### As a Standalone CLI Tool
+```bash
+# Install directly via Go
+go install github.com/farshidrezaei/mosaic/cmd/mosaic@latest
+
+# Or run via Docker (FFmpeg pre-installed)
+docker run --rm -v $(pwd):/workspace ghcr.io/farshidrezaei/mosaic -i input.mp4 -o ./output/hls
+```
+
+---
+
+## 🛠️ CLI Quick Start
+
+```bash
+# Package local or remote video into HLS fMP4 with mobile orientation normalization
+mosaic -i video.mp4 -o ./output/hls
+
+# Package into DASH CMAF with 4 CPU threads and NVENC GPU acceleration
+mosaic -i video.mp4 -o ./output/dash -f dash --threads 4 --gpu nvenc
 ```
 
 ---
@@ -242,13 +264,23 @@ golangci-lint run
 - [docs/TESTING.md](./docs/TESTING.md): Mock executor guide, test strategies, and smoke tests.
 - [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md): Common errors and debugging tips.
 - [STRUCTURE.md](STRUCTURE.md): Repository layout and package responsibilities.
-- [CONTRIBUTING.md](CONTRIBUTING.md): Contribution workflow and development contracts.
-- [CHANGELOG.md](CHANGELOG.md): Complete version history and release notes.
-- [SECURITY.md](SECURITY.md): Vulnerability reporting policy.
 
----
-
-## 📄 License
-
-MIT License. See [LICENSE](LICENSE) for details.
-
+## 🤝 Contributing & Community
+ 
+ Contributions are very welcome! Whether you are fixing a bug, adding new encoder profiles, or improving documentation:
+ 
+ 1. Check out [`CONTRIBUTING.md`](CONTRIBUTING.md) for development rules and contracts.
+ 2. Explore [Good First Issues](https://github.com/farshidrezaei/mosaic/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) for beginner-friendly tasks.
+ 3. Join the conversation on [GitHub Discussions](https://github.com/farshidrezaei/mosaic/discussions).
+ 
+ ---
+ 
+ ## 🌟 Star History
+ 
+ [![Star History Chart](https://api.star-history.com/svg?repos=farshidrezaei/mosaic&type=Date)](https://star-history.com/#farshidrezaei/mosaic&Date)
+ 
+ ---
+ 
+ ## 📄 License
+ 
+ MIT License. See [LICENSE](LICENSE) for details.

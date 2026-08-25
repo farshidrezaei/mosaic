@@ -1,0 +1,10 @@
+.git
+.github
+docs
+examples
+output
+tmp
+*.mp4
+*.m3u8
+*.m4s
+*.mpd

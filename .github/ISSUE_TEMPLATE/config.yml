@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/farshidrezaei/mosaic/discussions
+    about: Ask questions, discuss architecture, or share how you use Mosaic.
+  - name: 📖 Documentation Portal
+    url: https://farshidrezaei.github.io/mosaic/
+    about: Explore tutorials, guides, and API documentation.

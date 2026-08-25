@@ -1,0 +1,43 @@
+name: 🐛 Bug Report
+description: Report a reproducible bug or unexpected behavior in Mosaic
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report an issue! Please provide as much detail as possible.
+  - type: input
+    id: version
+    attributes:
+      label: Mosaic Version
+      placeholder: "v1.7.2"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: "Go 1.25, FFmpeg 9.0, Ubuntu 24.04 / macOS Sequoia"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: A clear and concise description of what happened vs what was expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce / Code Sample
+      description: Please share a minimal code snippet or CLI command to reproduce the issue.
+      render: Go
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs / FFmpeg Output
+      description: Paste any error messages or FFmpeg logs.
+      render: shell
