@@ -6,7 +6,6 @@ import (
 	"context"
 	"os/exec"
 	"sync"
-	"syscall"
 )
 
 // Usage contains process execution statistics.
@@ -95,9 +94,7 @@ func (r *RealCommandExecutor) ExecuteWithProgress(ctx context.Context, progress 
 	usage := &Usage{
 		UserTime:   cmd.ProcessState.UserTime().Seconds(),
 		SystemTime: cmd.ProcessState.SystemTime().Seconds(),
-	}
-	if ru, ok := cmd.ProcessState.SysUsage().(*syscall.Rusage); ok {
-		usage.MaxMemory = ru.Maxrss
+		MaxMemory:  extractMaxMemory(cmd.ProcessState),
 	}
 
 	return out.Bytes(), usage, nil
