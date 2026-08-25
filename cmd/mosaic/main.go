@@ -13,7 +13,7 @@ import (
 	"github.com/farshidrezaei/mosaic"
 )
 
-const version = "1.7.2"
+var version = "1.7.3"
 
 func printUsage() {
 	fmt.Fprintf(os.Stderr, `Mosaic CLI - Predictable Adaptive Bitrate (ABR) Video Packaging (v%s)

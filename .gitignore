@@ -24,3 +24,9 @@ Thumbs.db
 # Codex / Agent tools
 .codex
 .codegraph/
+
+# Binaries & GoReleaser output
+/mosaic
+/mosaic.exe
+dist/
+

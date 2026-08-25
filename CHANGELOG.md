@@ -4,11 +4,12 @@ All notable changes to this project are documented here.
 
 ## [Unreleased]
 
+## [v1.7.3] - 2026-08-25
+
 ### Added
 
-### Changed
-
-### Fixed
+- Added GoReleaser configuration (`.goreleaser.yaml`) and GitHub Actions release workflow (`.github/workflows/release.yml`) for automated multi-platform cross-compilation (Linux, macOS, Windows on amd64 and arm64) and Release Asset generation on tag push.
+- Added dynamic version injection support via ldflags in `cmd/mosaic`.
 
 ## [v1.7.2] - 2026-08-25
 
