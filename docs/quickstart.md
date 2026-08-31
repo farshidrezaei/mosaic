@@ -1,22 +1,52 @@
 # Quick Start
 
-Get started with **Mosaic** in minutes.
+Get started with **Mosaic** in minutes using either the standalone CLI or the Go library.
 
 ---
 
-## 1. Installation
+## 1. CLI Quick Start
 
-Ensure you have Go `1.25+` and FFmpeg `4.4+` installed:
+### Install CLI
+```bash
+go install github.com/farshidrezaei/mosaic/cmd/mosaic@latest
+```
 
+### Basic Packaging with Thumbnails
+```bash
+mosaic -i input.mp4 -o ./output/hls --thumbnails
+```
+
+### Next-Gen AV1 with Watermark & Audio Normalization
+```bash
+mosaic -i input.mp4 -o ./output/hls_av1 \
+  --codec av1 \
+  --crf 28 \
+  --watermark ./logo.png \
+  --normalize-audio \
+  --thumbnails
+```
+
+### Encrypt HLS Segments with AES-128
+```bash
+mosaic -i input.mp4 -o ./output/hls_encrypted --encrypt-aes128
+```
+
+### Test in Web Player (DevTools Preview)
+```bash
+mosaic preview ./output/hls
+```
+Open **`http://localhost:8080`** in your browser to inspect and test the stream with live rendition switching, audio selector, and scrub thumbnails!
+
+---
+
+## 2. Go Library Usage
+
+### Install Go Package
 ```bash
 go get github.com/farshidrezaei/mosaic
 ```
 
----
-
-## 2. HLS Packaging Example
-
-Here is a complete, production-ready example to package a video into HLS with CMAF segments:
+### Complete HLS Packaging Pipeline
 
 ```go
 package main
@@ -43,18 +73,28 @@ func main() {
 	usage, err := mosaic.EncodeHls(
 		context.Background(),
 		job,
-		mosaic.WithNormalizeOrientation(), // Automatically physically rotates mobile/portrait videos
-		mosaic.WithThreads(4),             // 4 CPU encoding threads
+		mosaic.WithNormalizeOrientation(), // Automatically physically transposes mobile 90°/270° videos
+		mosaic.WithNormalizeAudio(),       // Broadcast-standard EBU R128 loudness leveling
+		mosaic.WithThumbnails(),           // Generates storyboard sprite sheet & thumbnails.vtt
+		mosaic.WithWatermark(mosaic.WatermarkConfig{
+			Path:     "./branding/logo.png",
+			Position: mosaic.PositionTopRight,
+			Opacity:  0.85,
+		}),
+		mosaic.WithSubtitles(mosaic.SubtitleTrack{
+			Path:     "./subtitles/en.srt", // Auto-converted to WebVTT
+			Language: "en",
+			Label:    "English",
+			Default:  true,
+		}),
+		mosaic.WithThreads(4),
 	)
 	if err != nil {
 		log.Fatalf("HLS Encoding failed: %v", err)
 	}
 
-	fmt.Printf("\nEncoding completed!\n")
-	if usage != nil {
-		fmt.Printf("CPU Time: %.2fs user, %.2fs system | Peak RSS: %d KB\n",
-			usage.UserTime, usage.SystemTime, usage.MaxMemory)
-	}
+	fmt.Printf("\nEncoding completed! CPU User Time: %.2fs | Peak RSS: %d KB\n",
+		usage.UserTime, usage.MaxMemory)
 }
 ```
 
@@ -63,10 +103,14 @@ func main() {
 The output directory `./output/hls` will contain:
 
 ```text
-master.m3u8          # Multi-variant master playlist
+master.m3u8          # Multi-variant master playlist with subtitles
 stream_0.m3u8        # 1080p stream playlist
 stream_1.m3u8        # 720p stream playlist
 stream_2.m3u8        # 360p stream playlist
+sub_0.m3u8           # English subtitle playlist
+sub_0.vtt            # WebVTT subtitle file
+thumbnails_0.jpg     # Storyboard sprite sheet
+thumbnails.vtt       # WebVTT timeline cue coordinates
 init_0.mp4           # fMP4 initialization segment for variant 0
 seg_0_0.m4s          # Media segment 0 of variant 0
 seg_0_1.m4s          # Media segment 1 of variant 0
@@ -75,9 +119,7 @@ seg_0_1.m4s          # Media segment 1 of variant 0
 
 ---
 
-## 3. DASH CMAF Example
-
-To package for MPEG-DASH:
+## 3. DASH CMAF Packaging
 
 ```go
 package main
@@ -114,15 +156,4 @@ func main() {
 
 	fmt.Println("\nDASH packaging complete -> ./output/dash/manifest.mpd")
 }
-```
-
-### Generated Files
-
-The output directory `./output/dash` will contain:
-
-```text
-manifest.mpd                              # MPD XML manifest
-init-stream0.m4s                          # Init segment for stream 0
-chunk-stream0-00001.m4s                   # Media chunks
-...
 ```

@@ -11,13 +11,20 @@ import (
 	"github.com/farshidrezaei/mosaic/internal/executor"
 	"github.com/farshidrezaei/mosaic/ladder"
 	"github.com/farshidrezaei/mosaic/probe"
+	"github.com/farshidrezaei/mosaic/watermark"
 )
 
 // EncoderOptions defines options for the encoder.
 type EncoderOptions struct {
-	GPU      config.GPUType
-	LogLevel string
-	Threads  int
+	Watermark      *watermark.Config
+	KeyInfoFile    string
+	GPU            config.GPUType
+	Codec          config.VideoCodec
+	LogLevel       string
+	Threads        int
+	CRF            int
+	EnableIFrames  bool
+	NormalizeAudio bool
 }
 
 // EncodeHLSCMAF encodes the input video to HLS with CMAF segments.
@@ -50,7 +57,7 @@ func EncodeHLSCMAFWithExecutor(
 		return nil, err
 	}
 
-	filter := buildFilterGraph(l)
+	filter := buildFilterGraph(l, info, opts.Watermark)
 	gop := calcGOP(info.FPS, profile.SegmentDuration)
 
 	args := []string{
@@ -65,6 +72,10 @@ func EncodeHLSCMAFWithExecutor(
 		"-i", input,
 	}
 
+	if opts.Watermark != nil && opts.Watermark.Path != "" {
+		args = append(args, "-i", opts.Watermark.Path)
+	}
+
 	if opts.Threads > 0 {
 		args = append(args, "-threads", strconv.Itoa(opts.Threads))
 	}
@@ -72,29 +83,31 @@ func EncodeHLSCMAFWithExecutor(
 	args = append(args, "-filter_complex", filter)
 
 	// ---------- VIDEO ----------
+	encoderName := ResolveVideoEncoder(opts.Codec, opts.GPU)
 	for i, r := range l {
-		codec := "libx264"
-		switch opts.GPU {
-		case config.GPU_NVENC:
-			codec = "h264_nvenc"
-		case config.GPU_VAAPI:
-			codec = "h264_vaapi"
-		case config.GPU_VIDEOTOOLBOX:
-			codec = "h264_videotoolbox"
-		}
-
 		args = append(args,
 			"-map", fmt.Sprintf("[v%do]", i),
 
-			fmt.Sprintf("-c:v:%d", i), codec,
-			fmt.Sprintf("-profile:v:%d", i), r.Profile,
-			fmt.Sprintf("-level:v:%d", i), r.Level,
-
+			fmt.Sprintf("-c:v:%d", i), encoderName,
 			"-pix_fmt", "yuv420p",
 		)
 
-		if codec == "libx264" {
-			args = append(args, "-preset", "medium")
+		if opts.Codec == "" || opts.Codec == config.CodecH264 {
+			args = append(args,
+				fmt.Sprintf("-profile:v:%d", i), r.Profile,
+				fmt.Sprintf("-level:v:%d", i), r.Level,
+			)
+			if encoderName == "libx264" {
+				args = append(args, "-preset", "medium")
+			}
+		} else if opts.Codec == config.CodecAV1 && encoderName == "libsvtav1" {
+			args = append(args, "-preset", "8")
+		} else if opts.Codec == config.CodecHEVC && encoderName == "libx265" {
+			args = append(args, "-x265-params", "no-info=1")
+		}
+
+		if opts.CRF > 0 {
+			args = append(args, fmt.Sprintf("-crf:v:%d", i), strconv.Itoa(opts.CRF))
 		}
 
 		args = append(args,
@@ -106,6 +119,7 @@ func EncodeHLSCMAFWithExecutor(
 			fmt.Sprintf("-maxrate:v:%d", i), fmt.Sprintf("%dk", r.MaxRate),
 			fmt.Sprintf("-bufsize:v:%d", i), fmt.Sprintf("%dk", r.BufSize),
 		)
+
 		args = appendVideoRotationMetadataReset(args, i)
 	}
 
@@ -118,39 +132,41 @@ func EncodeHLSCMAFWithExecutor(
 				fmt.Sprintf("-b:a:%d", i), "96k",
 				"-ac", "2",
 			)
+			if opts.NormalizeAudio {
+				args = append(args, fmt.Sprintf("-af:a:%d", i), "loudnorm=I=-16:TP=-1.5:LRA=11")
+			}
 		}
 	}
 
 	// ---------- HLS / CMAF ----------
-	args = append(args,
-		"-f", "hls",
-		"-hls_segment_type", "fmp4",
-	)
+	args = append(args, "-f", "hls")
+	segmentFilename := filepath.Join(outDir, "seg_%v_%d.m4s")
+
+	if opts.KeyInfoFile != "" {
+		args = append(args, "-hls_key_info_file", opts.KeyInfoFile)
+		segmentFilename = filepath.Join(outDir, "seg_%v_%d.ts")
+	} else {
+		args = append(args, "-hls_segment_type", "fmp4")
+	}
 
 	if !profile.LowLatency {
 		args = append(args, "-hls_playlist_type", "vod")
 	}
 
+	hlsFlags := "independent_segments"
 	if profile.LowLatency {
-		args = append(args,
-			"-hls_time", strconv.Itoa(profile.SegmentDuration),
-			"-hls_part_size", "0.5",
-			"-hls_flags", "independent_segments+split_by_time",
-		)
-	} else {
-		args = append(args,
-			"-hls_time", strconv.Itoa(profile.SegmentDuration),
-			"-hls_flags", "independent_segments",
-		)
+		hlsFlags += "+split_by_time"
+	}
+	if opts.EnableIFrames {
+		hlsFlags += "+iframes_only"
 	}
 
 	args = append(args,
-		"-hls_segment_filename",
-		filepath.Join(outDir, "seg_%v_%d.m4s"),
-
+		"-hls_time", strconv.Itoa(profile.SegmentDuration),
+		"-hls_flags", hlsFlags,
+		"-hls_segment_filename", segmentFilename,
 		"-master_pl_name", "master.m3u8",
 		"-var_stream_map", buildVarStreamMap(len(l), info.HasAudio),
-
 		filepath.Join(outDir, "stream_%v.m3u8"),
 	)
 
@@ -184,7 +200,7 @@ func EncodeHLSCMAFWithExecutor(
 
 // ---------- FILTER GRAPH ----------
 
-func buildFilterGraph(l []ladder.Rendition) string {
+func buildFilterGraph(l []ladder.Rendition, info probe.VideoInfo, wm *watermark.Config) string {
 	var b strings.Builder
 
 	// split
@@ -195,14 +211,70 @@ func buildFilterGraph(l []ladder.Rendition) string {
 	}
 	b.WriteString(";")
 
-	// scale + SAR
-	for i, r := range l {
-		_, _ = fmt.Fprintf(&b,
-			"[v%d]scale=%d:%d,setsar=1[v%do];",
-			i,
-			r.Width, r.Height,
-			i,
-		)
+	dw := info.DisplayWidth()
+	dh := info.DisplayHeight()
+
+	if wm != nil && wm.Path != "" {
+		wm.Normalize()
+		b.WriteString("[1:v]")
+		_, _ = fmt.Fprintf(&b, "split=%d", len(l))
+		for i := range l {
+			_, _ = fmt.Fprintf(&b, "[wm%d]", i)
+		}
+		b.WriteString(";")
+
+		for i, r := range l {
+			wmWidth := int(float64(r.Width) * wm.ScaleFraction)
+			if wmWidth%2 != 0 {
+				wmWidth++
+			}
+			if wmWidth < 16 {
+				wmWidth = 16
+			}
+
+			if wm.Opacity < 1.0 {
+				_, _ = fmt.Fprintf(&b,
+					"[wm%d]scale=%d:-1,format=rgba,colorchannelmixer=aa=%.2f[wm%d_proc];",
+					i, wmWidth, wm.Opacity, i,
+				)
+			} else {
+				_, _ = fmt.Fprintf(&b,
+					"[wm%d]scale=%d:-1[wm%d_proc];",
+					i, wmWidth, i,
+				)
+			}
+
+			if dw > 0 && dh > 0 {
+				_, _ = fmt.Fprintf(&b,
+					"[v%d]scale=%d:%d,setsar=1,setdar=%d/%d[v%d_scaled];",
+					i, r.Width, r.Height, dw, dh, i,
+				)
+			} else {
+				_, _ = fmt.Fprintf(&b,
+					"[v%d]scale=%d:%d,setsar=1[v%d_scaled];",
+					i, r.Width, r.Height, i,
+				)
+			}
+
+			_, _ = fmt.Fprintf(&b,
+				"[v%d_scaled][wm%d_proc]overlay=%s[v%do];",
+				i, i, wm.OverlayExpression(), i,
+			)
+		}
+	} else {
+		for i, r := range l {
+			if dw > 0 && dh > 0 {
+				_, _ = fmt.Fprintf(&b,
+					"[v%d]scale=%d:%d,setsar=1,setdar=%d/%d[v%do];",
+					i, r.Width, r.Height, dw, dh, i,
+				)
+			} else {
+				_, _ = fmt.Fprintf(&b,
+					"[v%d]scale=%d:%d,setsar=1[v%do];",
+					i, r.Width, r.Height, i,
+				)
+			}
+		}
 	}
 
 	return strings.TrimSuffix(b.String(), ";")

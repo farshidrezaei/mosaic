@@ -22,24 +22,29 @@
 
 ---
 
-`mosaic` is a robust Go library for adaptive bitrate video packaging. It probes input media with FFprobe, computes an aspect-preserving ABR ladder, applies bitrate optimizations, and generates standardized **HLS (fMP4)** and **DASH CMAF** streams using FFmpeg.
+`mosaic` is a comprehensive, production-grade Go library for adaptive bitrate (ABR) video packaging. It probes input media, computes an aspect-preserving rendition ladder, applies quality and bitrate optimizations, and generates standardized **HLS (fMP4 / TS)** and **DASH CMAF** streams using FFmpeg.
 
 📖 **Full Online Documentation & Guides**: [https://farshidrezaei.github.io/mosaic/](https://farshidrezaei.github.io/mosaic/)
 
-Designed for server-side encoding workloads, background workers, and transcoding pipelines where predictability, clean abstractions, and zero external dependencies are critical.
+Designed for server-side video infrastructure, background workers, and media pipelines where predictability, performance, clean abstractions, and zero external dependencies are critical.
 
 ---
 
 ## ⚡ Highlights
 
 - **Standard CMAF Output**: Generates HLS (`master.m3u8`, variant playlists, `fMP4` segments) and DASH (`manifest.mpd`, `init.m4s`, `chunk.m4s`) streams.
+- **Next-Gen Codecs**: First-class support for **AV1** (`libsvtav1`), **HEVC / H.265** (`libx265`), and **H.264 / AVC** (`libx264`) with software and GPU hardware acceleration.
+- **Smart Quality & Capped-CRF**: Content-Aware Bitrate optimization combining Constant Rate Factor (CRF) with VBV maxrate caps to save 30–50% bandwidth without quality loss.
+- **Storyboard Thumbnails (Trick-Play Preview)**: Automatically generates sprite sheets (`thumbnails_0.jpg`) and standard WebVTT cue files (`thumbnails.vtt`) for timeline scrubber previews in modern video players.
+- **Built-in Web Preview DevTools Player**: Instantly test and inspect streams locally via `mosaic preview [dir]` featuring a dark-mode web player (Hls.js / Dash.js), audio/rendition switcher, and live diagnostics.
+- **Subtitles & Multi-Track Audio**: Converts SRT to WebVTT automatically and injects subtitle tracks into HLS master playlists (`#EXT-X-MEDIA:TYPE=SUBTITLES`) and DASH AdaptationSets.
+- **EBU R128 Audio Normalization**: Automatic broadcast-standard audio normalization (`loudnorm=I=-16:TP=-1.5:LRA=11`) ensuring uniform volume levels.
+- **Dynamic Watermarking & Branding**: Configurable overlay placement (`top-right`, `top-left`, `bottom-right`, `bottom-left`, `center`), alpha opacity blending, and auto-scaling relative to rendition widths.
+- **HLS AES-128 Segment Encryption**: Automated 16-byte key generation and playlist tagging (`#EXT-X-KEY:METHOD=AES-128`) for content protection.
+- **Zero-Dependency Cloud Storage Upload (S3 / MinIO / R2)**: Concurrent streaming asset upload with pure Go AWS SigV4 signing and automatic `Content-Type` / `Cache-Control: immutable` headers.
 - **Aspect-Preserving ABR Ladders**: Automatically preserves the source display aspect ratio — landscape, square (1:1), portrait (9:16), or ultra-wide inputs never get distorted or letterboxed with black bars.
 - **Orientation Normalization**: Probes display matrices and rotation tags (`90°`, `180°`, `270°`), physically transposes frames when needed, and resets output metadata so mobile videos display correctly everywhere.
 - **Real-Time Progress Tracking**: Accurately computes encoding percentage (`0.0%` to `100.0%`), encoded time, current bitrate, and speed.
-- **Hardware Acceleration**: Out-of-the-box support for NVIDIA NVENC, Intel/AMD VAAPI, and Apple VideoToolbox.
-- **Single-Pass Filter Complex**: Both HLS and DASH use unified `filter_complex` graphs (`split -> scale -> setsar=1`) for optimal 1-pass encoding performance and SAR consistency.
-- **High Framerate Bitrate Scaling**: Optional automatic bitrate adjustments for high-framerate content (>30 FPS).
-- **Configurable B-Frames**: Tune B-frame counts across profiles for maximum compression efficiency.
 - **Zero Third-Party Dependencies**: Built strictly with Go standard library + FFmpeg/FFprobe CLI tooling.
 - **Fully Testable Architecture**: Interface-driven command executor allows 100% unit testing without calling live FFmpeg.
 
@@ -48,7 +53,7 @@ Designed for server-side encoding workloads, background workers, and transcoding
 ## 📋 Requirements
 
 - **Go**: `1.25+`
-- **FFmpeg**: `4.4+` (with `libx264` and `aac` support)
+- **FFmpeg**: `4.4+` (with `libx264`, `libx265`, `libsvtav1`, and `aac` support)
 - **FFprobe**: Typically installed alongside FFmpeg
 
 ---
@@ -66,7 +71,7 @@ go get github.com/farshidrezaei/mosaic
 go install github.com/farshidrezaei/mosaic/cmd/mosaic@latest
 
 # Or run via Docker (FFmpeg pre-installed)
-docker run --rm -v $(pwd):/workspace ghcr.io/farshidrezaei/mosaic -i input.mp4 -o ./output/hls
+docker run --rm -v $(pwd):/workspace ghcr.io/farshidrezaei/mosaic -i input.mp4 -o ./output/hls --thumbnails
 ```
 
 ---
@@ -74,18 +79,35 @@ docker run --rm -v $(pwd):/workspace ghcr.io/farshidrezaei/mosaic -i input.mp4 -
 ## 🛠️ CLI Quick Start
 
 ```bash
-# Package local or remote video into HLS fMP4 with mobile orientation normalization
-mosaic -i video.mp4 -o ./output/hls
+# 1. Package video into HLS with mobile normalization and thumbnail scrubber:
+mosaic -i input.mp4 -o ./output/hls --thumbnails
 
-# Package into DASH CMAF with 4 CPU threads and NVENC GPU acceleration
-mosaic -i video.mp4 -o ./output/dash -f dash --threads 4 --gpu nvenc
+# 2. Package with Next-Gen AV1 codec, Capped-CRF, Watermark, and Audio Normalization:
+mosaic -i input.mp4 -o ./output/hls_av1 \
+  --codec av1 \
+  --crf 28 \
+  --watermark ./logo.png \
+  --normalize-audio \
+  --thumbnails
+
+# 3. Encrypt HLS segments with AES-128:
+mosaic -i input.mp4 -o ./output/hls_secure --encrypt-aes128
+
+# 4. Package and auto-upload directly to S3 / MinIO:
+mosaic -i input.mp4 -o ./output/hls_s3 \
+  --s3-bucket my-stream-bucket \
+  --s3-prefix videos/movie1 \
+  --s3-region us-east-1
+
+# 5. Launch local web player to preview generated streams:
+mosaic preview ./output/hls
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Go Library Usage
 
-### 1. HLS Packaging
+### 1. Complete Production HLS Workflow (Thumbnails, Watermark, Subtitles, AES-128)
 
 ```go
 package main
@@ -100,8 +122,8 @@ import (
 
 func main() {
 	job := mosaic.Job{
-		Input:     "input.mp4",
-		OutputDir: "./output/hls",
+		Input:     "movie.mp4",
+		OutputDir: "./output/hls_stream",
 		Profile:   mosaic.ProfileVOD,
 		ProgressHandler: func(info mosaic.ProgressInfo) {
 			fmt.Printf("\r[%5.1f%%] time=%s bitrate=%s speed=%s",
@@ -112,7 +134,21 @@ func main() {
 	usage, err := mosaic.EncodeHls(
 		context.Background(),
 		job,
-		mosaic.WithNormalizeOrientation(), // Handles mobile/rotated video
+		mosaic.WithNormalizeOrientation(), // Correct mobile 90°/270° orientation
+		mosaic.WithNormalizeAudio(),       // EBU R128 broadcast audio leveling
+		mosaic.WithThumbnails(),           // Generates thumbnails.vtt & sprite sheet
+		mosaic.WithWatermark(mosaic.WatermarkConfig{
+			Path:     "./branding/logo.png",
+			Position: mosaic.PositionTopRight,
+			Opacity:  0.85,
+		}),
+		mosaic.WithSubtitles(mosaic.SubtitleTrack{
+			Path:     "./subtitles/en.srt", // Auto-converted to WebVTT
+			Language: "en",
+			Label:    "English",
+			Default:  true,
+		}),
+		mosaic.WithAES128Encryption(),     // Generates enc.key and encrypts segments
 		mosaic.WithThreads(4),
 	)
 	if err != nil {
@@ -123,14 +159,13 @@ func main() {
 }
 ```
 
-### 2. DASH CMAF Packaging
+### 2. Next-Gen AV1 & HEVC Encoding with Capped-CRF
 
 ```go
 package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/farshidrezaei/mosaic"
@@ -139,148 +174,92 @@ import (
 func main() {
 	job := mosaic.Job{
 		Input:     "input.mp4",
-		OutputDir: "./output/dash",
+		OutputDir: "./output/av1_hls",
 		Profile:   mosaic.ProfileVOD,
-		ProgressHandler: func(info mosaic.ProgressInfo) {
-			fmt.Printf("\r[%5.1f%%] time=%s bitrate=%s speed=%s",
-				info.Percentage, info.CurrentTime, info.Bitrate, info.Speed)
-		},
 	}
 
-	_, err := mosaic.EncodeDash(
+	// High-efficiency AV1 ABR ladder with Capped-CRF 28
+	_, err := mosaic.EncodeHls(
 		context.Background(),
 		job,
-		mosaic.WithNormalizeOrientation(),
-		mosaic.WithBFrames(2),
-		mosaic.WithScaleBitrateWithFPS(),
+		mosaic.WithAV1(),
+		mosaic.WithCRF(28),
+		mosaic.WithThumbnails(),
 	)
 	if err != nil {
-		log.Fatalf("DASH encoding failed: %v", err)
+		log.Fatalf("AV1 encoding failed: %v", err)
 	}
-
-	fmt.Println("\nDASH packaging complete -> ./output/dash/manifest.mpd")
 }
 ```
 
----
-
-## 🧭 Core Workflow
-
-```text
-Input Media ──► probe ──► ladder ──► optimize ──► encoder ──► FFmpeg (CMAF)
-```
-
-1. **Probe**: `probe.Input` extracts video dimensions, framerate, duration, audio presence, and rotation metadata.
-2. **Ladder**: `ladder.Build` constructs a ladder preserving the original display aspect ratio.
-3. **Optimize**: `optimize.Apply` caps bitrates based on resolution/FPS and trims redundant, closely-spaced renditions.
-4. **Encoder**: Generates an optimal single-pass FFmpeg command graph and streams real-time progress.
-
----
-
-## 🎛️ Functional Options
-
-Mosaic provides composable functional options to tailor the encoding process:
-
-| Option | Description |
-|---|---|
-| `mosaic.WithNormalizeOrientation(bool...)` | Probes rotation metadata, transposes video if rotated, and clears output rotation tags. |
-| `mosaic.WithThreads(n)` | Sets CPU encoding thread count (`0` = FFmpeg auto-detection). |
-| `mosaic.WithBFrames(n)` | Sets number of B-frames for non-baseline profiles (default `0`). |
-| `mosaic.WithScaleBitrateWithFPS(bool...)` | Proportionally scales bitrate caps for high-framerate videos (>30 FPS). |
-| `mosaic.WithNVENC()` | Uses NVIDIA hardware encoding (`h264_nvenc`). |
-| `mosaic.WithVAAPI()` | Uses Intel/AMD hardware encoding (`h264_vaapi`). |
-| `mosaic.WithVideoToolbox()` | Uses Apple VideoToolbox hardware encoding (`h264_videotoolbox`). |
-| `mosaic.WithGPU(config.GPUType)` | Selects a specific GPU backend explicitly. |
-| `mosaic.WithLogLevel(level)` | Sets FFmpeg log level (`quiet`, `error`, `warning`, `info`, `debug`). |
-| `mosaic.WithLogger(logger)` | Sets a custom `*slog.Logger` for internal library logs. |
-
----
-
-## 📐 Aspect Ratio & Ladder Preservation
-
-Unlike legacy pipelines that letterbox non-16:9 videos into fixed frames, Mosaic calculates each rendition's width dynamically based on display dimensions:
-
-| Input Resolution | Aspect Ratio | Generated Renditions |
-|---|---|---|
-| `1920x1080` | 16:9 Landscape | `1920x1080` (5000k), `1280x720` (3000k), `640x360` (1000k) |
-| `1080x1080` | 1:1 Square | `1080x1080` (5000k), `720x720` (3000k), `360x360` (1000k) |
-| `1080x1920` | 9:16 Portrait | `608x1080` (5000k), `404x720` (3000k), `202x360` (1000k) |
-| `1280x718` | Custom Landscape | `642x360` (1000k) |
-| `426x240` | Low Resolution | `426x240` (1000k) *(no upscaling)* |
-
----
-
-## 📊 Real-Time Progress Monitoring
-
-The `ProgressHandler` receives parsed FFmpeg progress information on every tick:
+### 3. Direct Cloud Upload to S3 / MinIO / Cloudflare R2
 
 ```go
-type ProgressInfo struct {
-	Percentage  float64 // Exact percentage (0.0% to 100.0%)
-	CurrentTime string  // Encoded timestamp (e.g., "00:01:23.456000")
-	Bitrate     string  // Current encoding bitrate (e.g., "2450.3kbits/s")
-	Speed       string  // Encoding speed factor (e.g., "1.85x")
+package main
+
+import (
+	"context"
+	"log"
+
+	"github.com/farshidrezaei/mosaic"
+)
+
+func main() {
+	job := mosaic.Job{
+		Input:     "input.mp4",
+		OutputDir: "./output/hls",
+		Profile:   mosaic.ProfileVOD,
+	}
+
+	_, err := mosaic.EncodeHls(
+		context.Background(),
+		job,
+		mosaic.WithThumbnails(),
+		mosaic.WithS3Upload(mosaic.S3Config{
+			Endpoint:  "https://s3.us-east-1.amazonaws.com",
+			Bucket:    "my-media-bucket",
+			Region:    "us-east-1",
+			KeyPrefix: "content/video-101",
+			AccessKey: "YOUR_ACCESS_KEY",
+			SecretKey: "YOUR_SECRET_KEY",
+		}),
+	)
+	if err != nil {
+		log.Fatalf("Packaging and upload failed: %v", err)
+	}
 }
 ```
 
 ---
 
-## 📂 Examples
+## 📚 Documentation
 
-Complete, runnable examples are available in the [`examples/`](./examples) directory:
+For complete architecture details, API references, tutorials, and benchmark results:
 
-- [`examples/simple_hls`](./examples/simple_hls): Standard HLS VOD packaging with progress reporting.
-- [`examples/advanced_dash`](./examples/advanced_dash): DASH CMAF with B-Frames, FPS scaling, and custom thread control.
-- [`examples/live_streaming`](./examples/live_streaming): Low-latency live streaming profile (2s segments) for HLS & DASH.
-- [`examples/orientation_normalization`](./examples/orientation_normalization): Standalone and pipeline rotation normalization for mobile videos.
-- [`examples/progress_monitoring`](./examples/progress_monitoring): Terminal progress bar with percentage, speed, bitrate, and resource usage.
-- [`examples/multi_gpu`](./examples/multi_gpu): Multi-backend GPU hardware acceleration (NVENC / VAAPI / VideoToolbox).
+- [Documentation Portal (GitHub Pages)](https://farshidrezaei.github.io/mosaic/)
+- [System Architecture](docs/ARCHITECTURE.md)
+- [Encoding & Filter Graph](docs/ENCODING.md)
+- [Public API Reference](docs/API.md)
+- [Functional Options Reference](docs/options.md)
+- [Examples Catalog](docs/EXAMPLES.md)
+- [Testing & Quality Guide](docs/TESTING.md)
+- [Troubleshooting & FAQ](docs/TROUBLESHOOTING.md)
 
 ---
 
-## 🧪 Testing & Quality Assurance
+## 🤝 Contributing
 
-Mosaic is tested with a 100% dependency-injected architecture, enforcing strict code hygiene and race detection:
+Contributions are welcome! Please review [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) before submitting pull requests.
 
 ```bash
-# Run all tests with race detector
+# Verify code formatting, tests, and linting
+gofmt -w .
 GOCACHE=/tmp/go-build go test -v -race ./...
-
-# Static analysis
-GOCACHE=/tmp/go-build go vet ./...
-
-# Linter (Mandatory - zero issues policy)
 golangci-lint run
 ```
 
 ---
 
-## 📚 Documentation Map
+## 📄 License
 
-- [🌐 Online Documentation Portal](https://farshidrezaei.github.io/mosaic/): Full interactive guide, API reference, and searchable docs.
-- [docs/API.md](./docs/API.md): Complete public API reference and struct definitions.
-- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md): Package boundaries and internal execution flow.
-- [docs/ENCODING.md](./docs/ENCODING.md): Ladder generation, orientation, HLS, DASH, and FFmpeg filter graphs.
-- [docs/TESTING.md](./docs/TESTING.md): Mock executor guide, test strategies, and smoke tests.
-- [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md): Common errors and debugging tips.
-- [STRUCTURE.md](STRUCTURE.md): Repository layout and package responsibilities.
-
-## 🤝 Contributing & Community
- 
- Contributions are very welcome! Whether you are fixing a bug, adding new encoder profiles, or improving documentation:
- 
- 1. Check out [`CONTRIBUTING.md`](CONTRIBUTING.md) for development rules and contracts.
- 2. Explore [Good First Issues](https://github.com/farshidrezaei/mosaic/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) for beginner-friendly tasks.
- 3. Join the conversation on [GitHub Discussions](https://github.com/farshidrezaei/mosaic/discussions).
- 
- ---
- 
- ## 🌟 Star History
- 
- [![Star History Chart](https://api.star-history.com/svg?repos=farshidrezaei/mosaic&type=Date)](https://star-history.com/#farshidrezaei/mosaic&Date)
- 
- ---
- 
- ## 📄 License
- 
- MIT License. See [LICENSE](LICENSE) for details.
+Mosaic is licensed under the [MIT License](LICENSE).

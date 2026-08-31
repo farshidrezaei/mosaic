@@ -1,21 +1,26 @@
 # Mosaic - Adaptive Bitrate Video Packaging for Go
 
-> Mosaic is a production-ready Go library for adaptive bitrate (ABR) video packaging into HLS (fMP4) and DASH CMAF. It computes aspect-preserving ladders, handles mobile video orientation normalization, tracks real-time progress, supports hardware acceleration (NVENC, VAAPI, VideoToolbox), and uses single-pass FFmpeg filter graphs.
+> Mosaic is a production-ready, zero-dependency Go library for adaptive bitrate (ABR) video packaging into HLS and DASH CMAF. It features Next-Gen Codecs (AV1/HEVC), Capped-CRF Content-Aware Bitrate, Storyboard Thumbnails, Web Preview DevTools Player, Subtitles (SRT-to-VTT), EBU R128 Audio Normalization, Dynamic Watermarking, HLS AES-128 Encryption, and direct S3/MinIO cloud uploading using AWS SigV4.
 
 ## Core Capabilities
-- **HLS fMP4 Packaging**: Generates `master.m3u8`, variant playlists, and `.m4s` CMAF media segments with single-pass `filter_complex`.
-- **DASH CMAF Packaging**: Generates `manifest.mpd` and fragmented MP4 initialization and chunk streams.
-- **Aspect Ratio Preservation**: Supports 16:9, 1:1, 9:16 portrait, and custom video ratios without black bars or letterboxing.
-- **Orientation Normalization**: Probes rotation metadata (`90°`, `180°`, `270°`) and physically rotates frames while clearing metadata tags.
+- **Next-Gen Codecs**: Support for AV1 (`libsvtav1`), HEVC (`libx265`), and H.264 (`libx264`) with software & GPU acceleration (NVENC, VAAPI, VideoToolbox).
+- **Capped-CRF Quality**: Content-aware bitrate optimization combining Constant Rate Factor with VBV maxrate caps.
+- **Storyboard Thumbnails**: Automatic generation of JPEG sprite sheets and WebVTT timeline cue files (`thumbnails.vtt`).
+- **Web Preview DevTools**: Built-in dark-mode web player (`mosaic preview [dir]`) with Hls.js/Dash.js and telemetry.
+- **Subtitles & Multi-Audio**: SRT to WebVTT conversion and HLS/DASH manifest injection.
+- **EBU R128 Audio Leveling**: Broadcast-standard volume normalization (`loudnorm=I=-16:TP=-1.5:LRA=11`).
+- **Dynamic Watermarking**: Responsive logo overlay with alpha opacity blending.
+- **HLS AES-128 Encryption**: Automated cryptographic key generation and playlist security (`#EXT-X-KEY`).
+- **Zero-Dependency Cloud Upload**: Pure Go AWS SigV4 direct streaming asset uploads to S3, MinIO, and Cloudflare R2.
+- **Aspect Ratio & Orientation Normalization**: Preserves 16:9, 1:1, 9:16 portrait ratios and transposes rotated mobile videos.
 - **Real-Time Progress Tracking**: Calculates accurate percentage (`0.0%` to `100.0%`), encoded time, bitrate, and speed.
-- **Hardware Acceleration**: Automatic GPU encoder support for NVIDIA NVENC (`h264_nvenc`), Intel/AMD VAAPI (`h264_vaapi`), and Apple VideoToolbox (`h264_videotoolbox`).
 
 ## Installation
 ```bash
 go get github.com/farshidrezaei/mosaic
 ```
 
-## Quick Example (HLS Packaging)
+## Quick Example (Production HLS Workflow)
 ```go
 package main
 
@@ -41,43 +46,26 @@ func main() {
 		context.Background(),
 		job,
 		mosaic.WithNormalizeOrientation(),
+		mosaic.WithNormalizeAudio(),
+		mosaic.WithThumbnails(),
+		mosaic.WithWatermark(mosaic.WatermarkConfig{
+			Path:     "./branding/logo.png",
+			Position: mosaic.PositionTopRight,
+			Opacity:  0.85,
+		}),
+		mosaic.WithSubtitles(mosaic.SubtitleTrack{
+			Path:     "./subtitles/en.srt",
+			Language: "en",
+			Label:    "English",
+			Default:  true,
+		}),
+		mosaic.WithAES128Encryption(),
 		mosaic.WithThreads(4),
 	)
 	if err != nil {
 		log.Fatalf("HLS encoding failed: %v", err)
 	}
 	fmt.Printf("\nDone! Memory used: %d KB\n", usage.MaxMemory)
-}
-```
-
-## Quick Example (DASH CMAF Packaging)
-```go
-package main
-
-import (
-	"context"
-	"log"
-
-	"github.com/farshidrezaei/mosaic"
-)
-
-func main() {
-	job := mosaic.Job{
-		Input:     "input.mp4",
-		OutputDir: "./output/dash",
-		Profile:   mosaic.ProfileVOD,
-	}
-
-	_, err := mosaic.EncodeDash(
-		context.Background(),
-		job,
-		mosaic.WithNormalizeOrientation(),
-		mosaic.WithBFrames(2),
-		mosaic.WithScaleBitrateWithFPS(),
-	)
-	if err != nil {
-		log.Fatalf("DASH encoding failed: %v", err)
-	}
 }
 ```
 

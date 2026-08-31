@@ -2,7 +2,28 @@
 
 All notable changes to this project are documented here.
 
-## [Unreleased]
+## [v1.8.0] - 2026-08-31
+
+### Added
+
+- Next-Gen VitePress documentation portal with SSG sitemap generation, full English & Persian (RTL) dual-language translations, interactive Vue 3 ABR ladder calculator component, and interactive in-browser stream player.
+- Added `storage` package, `WithS3Upload()` functional option, and `--s3-*` CLI flags for zero-dependency direct streaming asset uploads to S3, MinIO, and Cloudflare R2 using pure Go AWS SigV4 signer, concurrent worker pool, and optimal MIME/cache headers.
+- Added Next-Gen Codec support with `WithCodec()`, `WithHEVC()`, `WithAV1()` options and `--codec` CLI flag (supporting `libsvtav1`, `libx265`, `libx264` and hardware encoders).
+- Added `WithCRF()` option and `--crf` CLI flag for capped-CRF content-aware bitrate optimization.
+- Added `watermark` package, `WithWatermark()` option, and `--watermark` CLI flag to dynamically overlay logos/watermarks with customized positioning (top-right, top-left, bottom-right, bottom-left, center), auto-scaling per rendition, and alpha opacity.
+- Added `encryption` package, `WithAES128Encryption()` option, and `--encrypt-aes128` CLI flag for automated cryptographic key generation and HLS AES-128 segment envelope encryption (`#EXT-X-KEY:METHOD=AES-128`).
+- Added `subtitles` package and `WithSubtitles()` functional option for WebVTT and SRT subtitle conversion and injection into HLS `#EXT-X-MEDIA:TYPE=SUBTITLES` and DASH AdaptationSets.
+- Added `WithNormalizeAudio()` option and `--normalize-audio` CLI flag applying EBU R128 (`loudnorm=I=-16:TP=-1.5:LRA=11`) broadcast audio volume standardization.
+- Added `thumbnail` package and `WithThumbnails()` functional option to automatically generate storyboard sprite sheets and standard WebVTT cue files (`thumbnails.vtt`) for timeline scrubber previews in video players.
+- Added `preview` package and `mosaic preview [dir]` CLI subcommand launching a local dark-mode HTTP preview player (supporting HLS.js, Dash.js, quality switching, and live stream telemetry).
+- Added `WithIFrames()` functional option and `--iframes` CLI flag to generate I-frame-only trick-play playlists (`#EXT-X-I-FRAMES-ONLY`) for HLS.
+- Added `docs/ROADMAP_PROGRESS.md` to track implementation progress across all roadmap phases.
+
+### Fixed
+
+- Fixed DASH conflicting stream aspect ratios error on portrait and non-standard videos by explicitly configuring DAR (`setdar`) across all ladder rungs in the filter complex.
+- Fixed HLS live profile failure caused by unrecognized `-hls_part_size` option in modern FFmpeg versions.
+- Removed deprecated `-vsync vfr` option from thumbnail generation command to ensure compatibility with modern FFmpeg (v7, v8, v9).
 
 ## [v1.7.3] - 2026-08-25
 

@@ -6,52 +6,82 @@ This is a quick repository map. For deeper architecture notes, see [docs/ARCHITE
 
 ```text
 mosaic/
-├── .github/workflows/go.yml      # CI, when present
-├── AGENTS.md                     # AI agent instructions
-├── CHANGELOG.md                  # release notes
-├── CONTRIBUTING.md               # human contribution workflow
-├── README.md                     # user-facing entry point
-├── ROADMAP.md                    # planned work
-├── SECURITY.md                   # security reporting policy
-├── STRUCTURE.md                  # quick package map
-├── SUPPORT.md                    # support and bug-report guidance
-├── encode.go                     # public encode orchestration API
-├── job.go                        # public Job/Profile/Progress types
-├── orientation.go                # orientation normalization helpers
+├── .github/workflows/go.yml      # CI workflows
+├── AGENTS.md                     # AI agent instructions and quality contracts
+├── CHANGELOG.md                  # Release notes and version history
+├── CONTRIBUTING.md               # Human contribution workflow
+├── README.md                     # User-facing entry point and highlights
+├── ROADMAP.md                    # Roadmap and future direction
+├── SECURITY.md                   # Security reporting policy
+├── STRUCTURE.md                  # Quick package map
+├── SUPPORT.md                    # Support and bug-report guidance
+├── encode.go                     # Public encode orchestration API & Options
+├── job.go                        # Public Job/Profile/Progress types
+├── orientation.go                # Orientation normalization helpers
+├── cmd/mosaic/
+│   └── main.go                   # CLI entrypoint (encoding + preview subcommand)
 ├── config/
-│   ├── profiles.go               # profiles and GPU constants
+│   ├── profiles.go               # Profiles, VideoCodec, and GPU constants
 │   └── profiles_test.go
-├── docs/
+├── docs/                         # GitHub Pages documentation portal (Docsify)
 │   ├── API.md
 │   ├── ARCHITECTURE.md
 │   ├── ENCODING.md
+│   ├── EXAMPLES.md
+│   ├── options.md
+│   ├── orientation.md
+│   ├── quickstart.md
+│   ├── installation.md
 │   ├── TESTING.md
 │   └── TROUBLESHOOTING.md
 ├── probe/
 │   ├── probe.go                  # FFprobe integration and metadata parsing
-│   ├── probe_test.go
-│   └── probe_integration_test.go
+│   └── probe_test.go
 ├── ladder/
 │   ├── types.go                  # Rendition type
-│   ├── ladder.go                 # aspect-preserving ladder generation
+│   ├── ladder.go                 # Aspect-preserving ladder generation
 │   └── ladder_test.go
 ├── optimize/
-│   ├── cost.go                   # bitrate cap rules
-│   ├── optimize.go               # bitrate optimization and rung trimming
+│   ├── cost.go                   # Bitrate cap rules
+│   ├── optimize.go               # Bitrate optimization and rung trimming
 │   └── optimize_test.go
 ├── encoder/
-│   ├── common.go                 # shared encoder helpers
-│   ├── hls_cmaf.go               # HLS CMAF command generation
+│   ├── common.go                 # Shared encoder helpers
+│   ├── codec.go                  # Video encoder resolution (x264, x265, SVT-AV1, GPU)
+│   ├── hls_cmaf.go               # HLS CMAF/TS command generation & AES-128
 │   ├── dash_cmaf.go              # DASH CMAF command generation
 │   └── *_test.go
+├── thumbnail/
+│   ├── thumbnail.go              # Sprite sheet generation and WebVTT cue builder
+│   └── thumbnail_test.go
+├── preview/
+│   ├── server.go                 # Local dark-mode web player (HLS.js / Dash.js)
+│   └── server_test.go
+├── subtitles/
+│   ├── subtitles.go              # SRT-to-VTT converter and HLS/DASH manifest injector
+│   └── subtitles_test.go
+├── watermark/
+│   ├── watermark.go              # Dynamic overlay coordinate builder and opacity
+│   └── watermark_test.go
+├── encryption/
+│   ├── encryption.go             # AES-128 key generation and enc.keyinfo setup
+│   └── encryption_test.go
+├── storage/
+│   ├── storage.go                # Zero-dependency S3 / MinIO / R2 uploader (AWS SigV4)
+│   └── storage_test.go
 ├── internal/executor/
-│   ├── executor.go               # real command executor
-│   ├── mock.go                   # mock executor
+│   ├── executor.go               # Real command executor with usage stats
+│   ├── mock.go                   # Mock executor for fast isolated testing
 │   └── executor_test.go
 └── examples/
     ├── simple_hls/
     ├── advanced_dash/
-    └── multi_gpu/
+    ├── thumbnails_and_preview/
+    ├── watermark_and_subtitles/
+    ├── encryption_aes128/
+    ├── nextgen_av1_hevc/
+    ├── s3_cloud_upload/
+    └── orientation_normalization/
 ```
 
 ## Runtime Flow
@@ -59,36 +89,29 @@ mosaic/
 ```text
 Job
  └─ encode.go
-    ├─ prepareInputForEncoding
-    │  └─ optional NormalizeVideoOrientation
-    ├─ probe.InputWithExecutor
-    │  └─ ffprobe metadata and audio detection
-    ├─ ladder.Build
-    │  └─ aspect-preserving quality rungs
-    ├─ optimize.Apply
-    │  └─ bitrate cap and rung trimming
-    └─ encoder.Encode{HLS|DASH}CMAFWithExecutor
-       └─ output directory creation + ffmpeg execution
+    ├─ prepareInputForEncoding (optional NormalizeVideoOrientation)
+    ├─ probe.InputWithExecutor (FFprobe metadata and audio streams)
+    ├─ ladder.Build (Aspect-preserving quality rungs)
+    ├─ optimize.Apply (Bitrate caps and redundant rung trimming)
+    ├─ encryption.SetupKeyInfo (Optional AES-128 key generation)
+    ├─ encoder.Encode{HLS|DASH}CMAFWithExecutor (FFmpeg single-pass packaging)
+    ├─ thumbnail.GenerateWithExecutor (Optional storyboard sprite + VTT)
+    ├─ subtitles.ProcessTracks (Optional SRT-to-VTT + manifest injection)
+    └─ storage.UploadDirectory (Optional S3 / MinIO direct sync)
 ```
 
 ## Package Responsibilities
 
-- `probe`: source introspection via FFprobe.
-- `ladder`: aspect-preserving initial rendition ladder generation.
-- `optimize`: bitrate post-processing and redundant rung trimming.
-- `encoder`: FFmpeg command assembly for HLS/DASH CMAF.
-- `internal/executor`: command execution abstraction and mocks.
-- `config`: profile and GPU backend constants.
-- root package `mosaic`: public API, option wiring, and orchestration.
-
-## Documentation Map
-
-- `README.md`: primary user documentation.
-- `docs/API.md`: public API details.
-- `docs/ARCHITECTURE.md`: runtime and package design.
-- `docs/ENCODING.md`: ladder, orientation, and FFmpeg behavior.
-- `docs/TESTING.md`: test and smoke-test guidance.
-- `docs/TROUBLESHOOTING.md`: operational debugging.
-- `SUPPORT.md`: support and bug-report guidance.
-- `SECURITY.md`: security reporting policy.
-- `AGENTS.md`: AI coding-agent instructions.
+- `probe`: Source introspection via FFprobe.
+- `ladder`: Aspect-preserving initial rendition ladder generation.
+- `optimize`: Bitrate post-processing and redundant rung trimming.
+- `encoder`: FFmpeg command assembly for HLS/DASH CMAF, Codecs, and Encryption.
+- `thumbnail`: Automatic storyboard sprite sheet and WebVTT cues generation.
+- `preview`: Local devtools HTTP preview server with web player.
+- `subtitles`: SRT-to-VTT subtitle converter and manifest injector.
+- `watermark`: Responsive logo/watermark overlay filter graph generation.
+- `encryption`: HLS AES-128 key generation and keyinfo configuration.
+- `storage`: Pure Go AWS SigV4 direct upload to S3, MinIO, or Cloudflare R2.
+- `internal/executor`: Command execution abstraction and test mocks.
+- `config`: Profile, Codec, and GPU backend constants.
+- root package `mosaic`: Public API, option wiring, and orchestration.

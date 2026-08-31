@@ -1,7 +1,0 @@
-* [Home](/)
-* [Quick Start](quickstart.md)
-* [API Reference](API.md)
-* [Examples](EXAMPLES.md)
-* [Releases](https://github.com/farshidrezaei/mosaic/releases)
-* [Go Package](https://pkg.go.dev/github.com/farshidrezaei/mosaic)
-* [GitHub](https://github.com/farshidrezaei/mosaic)

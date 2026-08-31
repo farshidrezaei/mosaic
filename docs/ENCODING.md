@@ -1,218 +1,133 @@
-# Encoding Behavior
+# Encoding & Pipeline Architecture
 
-This document describes how Mosaic chooses renditions and builds FFmpeg outputs.
+This document describes how Mosaic constructs rendition ladders, calculates display aspect ratios, configures next-gen video codecs, applies overlays, and builds optimal single-pass FFmpeg pipelines.
 
-## Probe Phase
+---
 
-Mosaic first calls FFprobe for the primary video stream.
+## 1. Probe & Display Dimensions
 
-Collected values:
+Mosaic queries FFprobe to inspect input stream metadata:
 
-- stored width
-- stored height
-- average frame rate
-- rotation metadata from side data or tags
+- Display width & height (accounting for container rotation tags)
+- Average frame rate (FPS)
+- Media duration
+- Audio stream presence and channels
+- Orientation metadata (matrix side data and tags)
 
-It then performs a second audio probe to determine if an audio stream exists.
+### Orientation vs Stored Dimensions
 
-## Display Dimensions
+Mobile and modern smartphone cameras often record rotated frames (e.g., stored `1920x1080` with `-90°` rotation). Mosaic computes all ladders from **true display dimensions** (`1080x1920`), ensuring correct portrait/landscape resolution tiers without distortion.
 
-Stored dimensions are not always display dimensions.
+---
 
-Example:
+## 2. Aspect-Preserving Ladder Generation
 
-```text
-stored:   1920x1080
-rotation: -90
-display:  1080x1920
-```
+Base rendition candidates are determined by display height:
 
-Mosaic builds the ladder from display dimensions.
-
-## Ladder Generation
-
-Base quality rungs are selected by display height:
-
-| Source Display Height | Candidate Rungs |
+| Source Display Height | Candidate Tiers |
 |----------------------:|-----------------|
-| `>= 1080`             | `1080`, `720`, `360` |
-| `>= 720`              | `720`, `360` |
-| `>= 360`              | `360` |
-| `< 360`               | source display height |
+| `>= 1080`             | `1080p`, `720p`, `360p` |
+| `>= 720`              | `720p`, `360p` |
+| `>= 360`              | `360p` |
+| `< 360`               | Source display height |
 
-The target width is computed from the source display aspect ratio:
+The width of each rendition is computed from the exact display aspect ratio:
 
-```text
-target_width = round(target_height * source_display_width / source_display_height)
-```
+\[
+\text{target\_width} = 2 \times \text{round}\left(\frac{\text{target\_height} \times \text{display\_width}}{2 \times \text{display\_height}}\right)
+\]
 
-Both width and height are made even.
+---
 
-## Aspect Ratio Examples
+## 3. Video Codecs & Hardware Acceleration
 
-| Input Display Size | Initial Rungs |
-|--------------------|---------------|
-| `1920x1080`        | `1920x1080`, `1280x720`, `640x360` |
-| `1080x1080`        | `1080x1080`, `720x720`, `360x360` |
-| `1080x1920`        | `608x1080`, `404x720`, `202x360` |
-| `1280x718`         | `642x360` |
-| `426x240`          | `426x240` |
+Mosaic supports software and hardware encoders across all major codecs:
 
-## Bitrate Optimization
+| Codec Constant | Software Encoder | NVIDIA NVENC | Intel/AMD VAAPI | Apple VideoToolbox |
+|---|---|---|---|---|
+| `CodecH264` (`"h264"`) | `libx264` | `h264_nvenc` | `h264_vaapi` | `h264_videotoolbox` |
+| `CodecHEVC` (`"hevc"`) | `libx265` | `hevc_nvenc` | `hevc_vaapi` | `hevc_videotoolbox` |
+| `CodecAV1` (`"av1"`) | `libsvtav1` | `av1_nvenc` | `av1_vaapi` | *(N/A)* |
 
-After ladder generation, `optimize.Apply` adjusts bitrates and buffer sizes.
+### Capped-CRF (Content-Aware Bitrate Control)
 
-Current cap rules:
+When `WithCRF(crf)` is enabled, Mosaic injects Constant Rate Factor parameters combined with VBV maximum bitrate and buffer size constraints (`-maxrate` and `-bufsize`). This ensures:
+- Simple scenes (talking heads, static backgrounds) consume significantly less bandwidth.
+- Complex scenes with high motion are strictly capped to prevent buffer overruns and network congestion.
 
-| Rung Height | Max Bitrate Cap |
-|------------:|----------------:|
-| `>= 1080`   | `5000k` |
-| `>= 720`    | `3000k` |
-| lower       | `1000k` |
+---
 
-The VBV buffer size is set to `MaxRate * 2`.
+## 4. Single-Pass Filter Complex Graph
 
-The optimizer also trims rungs where the height ratio relative to the previous kept rung is not meaningfully different.
-
-## HLS CMAF
-
-HLS output uses FFmpeg's HLS muxer:
+Mosaic generates a unified `filter_complex` graph to process all ladder tiers in a single FFmpeg pass:
 
 ```text
--f hls
--hls_segment_type fmp4
--master_pl_name master.m3u8
--var_stream_map ...
+[0:v]split=3[v0][v1][v2];
+[v0]scale=1920:1080,setsar=1,setdar=16/9[v0o];
+[v1]scale=1280:720,setsar=1,setdar=16/9[v1o];
+[v2]scale=640:360,setsar=1,setdar=16/9[v2o]
 ```
 
-Video processing:
+### Display Aspect Ratio (`setdar`) Consistency
+
+In DASH Adaptation Sets, FFmpeg strictly enforces identical Display Aspect Ratio (DAR) across all representations. Mosaic automatically calculates and injects `setdar=sourceW/sourceH` into every scale chain, eliminating any rounding mismatch errors across different resolutions.
+
+### Dynamic Watermark Overlay Graph
+
+When `WithWatermark()` is configured, Mosaic injects the watermark image into the filter graph:
 
 ```text
-split=N
-scale=width:height
-setsar=1
+[1:v]format=rgba,colorchannelmixer=aa=0.85[wm];
+[0:v]split=3[v0][v1][v2];
+[wm]split=3[wm0][wm1][wm2];
+[v0]scale=1920:1080,setsar=1,setdar=16/9[v0s];
+[wm0]scale=288:-1[wm0s];
+[v0s][wm0s]overlay=main_w-overlay_w-16:16[v0o];
+...
 ```
 
-Mosaic does not pad HLS outputs into a fixed frame. The frame dimensions are the aspect-preserving ladder dimensions.
+---
 
-HLS VOD profile:
+## 5. Audio Normalization (EBU R128)
+
+When `WithNormalizeAudio()` is enabled, Mosaic applies the ITU-R BS.1770 / EBU R128 loudness filter:
 
 ```text
--hls_time 5
--hls_flags independent_segments
+-filter:a loudnorm=I=-16:TP=-1.5:LRA=11
 ```
 
-HLS live profile:
+- **Integrated Loudness (`I`)**: `-16.0 LUFS` (optimal target for web & mobile streaming).
+- **True Peak (`TP`)**: `-1.5 dBFS` (prevents inter-sample clipping on DAC decoders).
+- **Loudness Range (`LRA`)**: `11.0 LU`.
+
+---
+
+## 6. Storyboard Thumbnails (Sprite Sheet + WebVTT)
+
+When `WithThumbnails()` is enabled, Mosaic extracts frames at regular intervals and packs them into a grid sprite:
+
+```bash
+ffmpeg -y -i input.mp4 -vf "select=not(mod(n\,48)),scale=160:90,tile=5x5" -start_number 0 -q:v 3 thumbnails_%d.jpg
+```
+
+Mosaic automatically generates the matching `thumbnails.vtt` file with precise spatial cue tags:
 
 ```text
--hls_time 2
--hls_part_size 0.5
--hls_flags independent_segments+split_by_time
+WEBVTT
+
+00:00:00.000 --> 00:00:02.000
+thumbnails_0.jpg#xywh=0,0,160,90
+
+00:00:02.000 --> 00:00:04.000
+thumbnails_0.jpg#xywh=160,0,160,90
 ```
 
-## DASH CMAF
+---
 
-DASH output uses FFmpeg's DASH muxer:
+## 7. Security & HLS AES-128 Encryption
 
-```text
--f dash
--seg_duration <profile duration>
--use_template 1
--use_timeline 1
-```
+When `WithAES128Encryption()` is enabled:
 
-Video processing uses the same single-pass filter graph as HLS:
-
-```text
-split=N
-scale=width:height
-setsar=1
-```
-
-Generated manifest:
-
-```text
-manifest.mpd
-```
-
-## Audio Handling
-
-If an audio stream exists, Mosaic maps the first audio stream for each variant:
-
-```text
--map a:0
--c:a:N aac
--b:a:N 96k
--ac 2
-```
-
-If no audio stream exists, audio mapping is omitted.
-
-## Orientation Normalization
-
-When `WithNormalizeOrientation()` is enabled:
-
-1. Mosaic probes orientation metadata.
-2. If rotation is `90`, `180`, or `270`, it runs FFmpeg with `-noautorotate` and an explicit transpose filter.
-3. The normalized temporary file is verified to have rotation `0`.
-4. Encoding proceeds from the temporary normalized file.
-5. The temporary input is removed after encoding.
-
-Rotation filter mapping:
-
-| Normalized Rotation | Filter |
-|--------------------:|--------|
-| `90`                | `transpose=2` |
-| `180`               | `transpose=1,transpose=1` |
-| `270` or `-90`      | `transpose=1` |
-
-Mosaic also clears output video rotation metadata with:
-
-```text
--metadata:s:v:N rotate=0
-```
-
-## Hardware Encoders
-
-Default video codec:
-
-```text
-libx264
-```
-
-Option mappings:
-
-| Option | FFmpeg Encoder |
-|--------|----------------|
-| `WithNVENC()` | `h264_nvenc` |
-| `WithVAAPI()` | `h264_vaapi` |
-| `WithVideoToolbox()` | `h264_videotoolbox` |
-
-Hardware encoder options do not add upload filters or platform-specific setup.
-
-## GOP
-
-GOP size is based on frame rate and segment duration:
-
-```text
-gop = round(fps * segment_duration)
-```
-
-Rules:
-
-- GOP is rounded up to an even value.
-- Minimum GOP is `24`.
-- `-keyint_min` matches GOP.
-- `-sc_threshold` is `0`.
-
-## Output Metadata
-
-Mosaic clears rotation metadata for generated video streams to avoid double-rotation in players.
-
-It sets sample aspect ratio to `1` in HLS and DASH filter graphs.
-
-## Known Limitations
-
-- Default codec is H.264.
-- Audio is always AAC at `96k` when present.
-- Per-title encoding is not implemented.
+1. Mosaic creates a 16-byte random key (`enc.key`) via `crypto/rand`.
+2. Mosaic creates `enc.keyinfo` containing the playlist URI and local key path.
+3. FFmpeg encrypts each media segment with AES-128-CBC and writes `#EXT-X-KEY:METHOD=AES-128,URI="..."` into every variant playlist.

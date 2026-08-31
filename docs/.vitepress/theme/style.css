@@ -1,0 +1,501 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Vazirmatn:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* Brand Palettes */
+  --vp-c-brand-1: #0284c7;
+  --vp-c-brand-2: #38bdf8;
+  --vp-c-brand-3: #6366f1;
+  --vp-c-brand-soft: rgba(56, 189, 248, 0.14);
+
+  --vp-font-family-base: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --vp-font-family-mono: 'JetBrains Mono', monospace;
+
+  --vp-nav-height: 64px;
+  --vp-nav-bg-color: transparent !important;
+}
+
+/* ==========================================================================
+   THEME VARIABLES & BACKGROUNDS (LIGHT & DARK VIA html.dark)
+   ========================================================================== */
+html:not(.dark) {
+  --vp-c-bg: #f8fafc;
+  --vp-c-bg-alt: #f1f5f9;
+  --vp-c-bg-elv: #ffffff;
+  --vp-c-bg-soft: #e2e8f0;
+  --vp-c-border: rgba(0, 0, 0, 0.08);
+  --vp-c-text-1: #0f172a;
+  --vp-c-text-2: #334155;
+  --vp-c-text-3: #64748b;
+  --vp-nav-bg-color: transparent !important;
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(135deg, #0284c7 20%, #6366f1 60%, #a855f7 100%);
+  --vp-home-hero-image-filter: drop-shadow(0 20px 40px rgba(2, 132, 199, 0.35));
+
+  --glass-nav-bg: rgba(255, 255, 255, 0.88);
+  --glass-sidebar-bg: rgba(248, 250, 252, 0.92);
+  --glass-card-bg: rgba(255, 255, 255, 0.8);
+  --glass-card-border: rgba(0, 0, 0, 0.08);
+  --glass-card-hover: rgba(241, 245, 249, 0.95);
+  --glass-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.06);
+}
+
+html:not(.dark) body {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+  background-image: 
+    radial-gradient(circle at 50% 5%, rgba(2, 132, 199, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 90% 80%, rgba(99, 102, 241, 0.05) 0%, transparent 45%) !important;
+  background-attachment: fixed !important;
+}
+
+html.dark {
+  --vp-c-bg: #070b14;
+  --vp-c-bg-alt: #0a0f1d;
+  --vp-c-bg-elv: #0f172a;
+  --vp-c-bg-soft: #111827;
+  --vp-c-border: rgba(255, 255, 255, 0.08);
+  --vp-c-text-1: #f8fafc;
+  --vp-c-text-2: #cbd5e1;
+  --vp-c-text-3: #94a3b8;
+  --vp-nav-bg-color: transparent !important;
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(135deg, #ffffff 30%, #38bdf8 70%, #818cf8 100%);
+  --vp-home-hero-image-filter: drop-shadow(0 20px 40px rgba(2, 132, 199, 0.5));
+
+  --glass-nav-bg: rgba(7, 11, 20, 0.85);
+  --glass-sidebar-bg: rgba(10, 15, 29, 0.88);
+  --glass-card-bg: rgba(15, 23, 42, 0.65);
+  --glass-card-border: rgba(255, 255, 255, 0.1);
+  --glass-card-hover: rgba(22, 33, 58, 0.8);
+  --glass-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.4);
+}
+
+html.dark body {
+  background-color: #070b14 !important;
+  color: #f8fafc !important;
+  background-image: 
+    radial-gradient(circle at 50% 5%, rgba(2, 132, 199, 0.22) 0%, transparent 45%),
+    radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 10% 90%, rgba(99, 102, 241, 0.15) 0%, transparent 40%) !important;
+  background-attachment: fixed !important;
+}
+
+body {
+  font-family: var(--vp-font-family-base);
+  letter-spacing: -0.015em;
+  -webkit-font-smoothing: antialiased;
+}
+
+.VPApp,
+.VPContent,
+.VPDoc,
+.content-container {
+  background: transparent !important;
+}
+
+/* ==========================================================================
+   FULL-WIDTH FROSTED GLASS NAVBAR (LTR BASE)
+   ========================================================================== */
+.VPNav,
+.VPNavBar .wrapper,
+.VPNavBar .container,
+.VPNavBar .content,
+.VPNavBar .content-body,
+.VPNavBar:not(.home.top) .content-body,
+.VPNavBar:not(.home.top) .content {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+.VPNavBar {
+  background: var(--glass-nav-bg) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid var(--glass-card-border) !important;
+  height: var(--vp-nav-height) !important;
+  width: 100% !important;
+}
+
+.VPNavBar .wrapper {
+  padding: 0 24px !important;
+  height: var(--vp-nav-height) !important;
+}
+
+.VPNavBar .container {
+  max-width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+.VPNavBarTitle {
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
+}
+
+.VPNavBarTitle .title {
+  font-weight: 800 !important;
+  font-size: 1.25rem !important;
+  letter-spacing: -0.03em !important;
+  color: var(--vp-c-text-1) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.VPNavBarTitle img.logo {
+  height: 32px !important;
+  width: 32px !important;
+  border-radius: 10px !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3) !important;
+  transition: transform 0.25s ease !important;
+}
+
+.VPNavBarTitle:hover img.logo {
+  transform: scale(1.06) !important;
+}
+
+.VPNavBarMenu {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  height: auto !important;
+}
+
+.VPNavBarMenuLink {
+  height: 34px !important;
+  line-height: 34px !important;
+  padding: 0 12px !important;
+  font-size: 0.88rem !important;
+  font-weight: 600 !important;
+  color: var(--vp-c-text-2) !important;
+  border-radius: 10px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  transition: all 0.2s ease !important;
+}
+
+.VPNavBarMenuLink:hover {
+  color: var(--vp-c-brand-2) !important;
+  background: var(--vp-c-brand-soft) !important;
+}
+
+.VPNavBarMenuLink.active {
+  color: var(--vp-c-brand-2) !important;
+  background: var(--vp-c-brand-soft) !important;
+  font-weight: 700 !important;
+}
+
+.VPNavBarSearch .DocSearch-Button,
+.VPNavBarSearch .local-search-box {
+  background: rgba(15, 23, 42, 0.4) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid var(--glass-card-border) !important;
+  border-radius: 10px !important;
+  padding: 0 12px !important;
+  height: 34px !important;
+  font-size: 0.85rem !important;
+  color: var(--vp-c-text-3) !important;
+  transition: all 0.2s ease !important;
+}
+
+.VPNavBarSearch .DocSearch-Button:hover {
+  border-color: var(--vp-c-brand-2) !important;
+  background: rgba(15, 23, 42, 0.7) !important;
+}
+
+.VPFlyout .menu {
+  background: var(--glass-sidebar-bg) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid var(--glass-card-border) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--glass-shadow) !important;
+  padding: 6px !important;
+}
+
+.VPMenu .group .item a {
+  border-radius: 8px !important;
+  padding: 6px 12px !important;
+  font-size: 0.88rem !important;
+}
+
+/* ==========================================================================
+   SIDEBAR & CONTENT
+   ========================================================================== */
+.VPSidebar {
+  background: var(--glass-sidebar-bg) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border-right: 1px solid var(--glass-card-border) !important;
+}
+
+.VPFeature {
+  background: var(--glass-card-bg) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  border: 1px solid var(--glass-card-border) !important;
+  border-radius: 20px !important;
+  box-shadow: var(--glass-shadow) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.VPFeature:hover {
+  background: var(--glass-card-hover) !important;
+  border-color: rgba(56, 189, 248, 0.45) !important;
+  transform: translateY(-4px);
+}
+
+.VPFeature .icon {
+  background: rgba(2, 132, 199, 0.15) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  border-radius: 12px !important;
+}
+
+.vp-doc [class*='language-'] {
+  border-radius: 16px !important;
+  border: 1px solid var(--glass-card-border) !important;
+  box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.4) !important;
+}
+
+.VPBadge {
+  border-radius: 9999px !important;
+  font-weight: 700 !important;
+  padding: 2px 10px !important;
+}
+
+/* ==========================================================================
+   FLAWLESS PERSIAN RTL STYLING (NAVBAR, SIDEBAR, CONTENT)
+   ========================================================================== */
+html[dir="rtl"],
+html:lang(fa),
+[dir="rtl"],
+:lang(fa) {
+  --vp-font-family-base: 'Vazirmatn', -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, sans-serif;
+  direction: rtl;
+  text-align: right;
+}
+
+/* 1. RTL NAVBAR: Natural Flow from Right to Left */
+html[dir="rtl"] .VPNavBar .wrapper {
+  direction: rtl !important;
+}
+
+html[dir="rtl"] .VPNavBar .container {
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
+  direction: rtl !important;
+}
+
+/* Logo sits on the far RIGHT */
+html[dir="rtl"] .VPNavBarTitle {
+  margin-right: 0 !important;
+  margin-left: 16px !important;
+  flex-shrink: 0 !important;
+}
+
+html[dir="rtl"] .VPNavBarTitle .title {
+  margin-right: 8px !important;
+  margin-left: 0 !important;
+}
+
+/* Content container fills remaining space towards the left */
+html[dir="rtl"] .VPNavBar .content {
+  flex-grow: 1 !important;
+  display: flex !important;
+  direction: rtl !important;
+}
+
+html[dir="rtl"] .VPNavBar .content-body {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  width: 100% !important;
+  direction: rtl !important;
+}
+
+/* Menu links sit next to the Logo on the right side */
+html[dir="rtl"] .VPNavBarMenu {
+  order: 1 !important;
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 6px !important;
+  margin-right: 8px !important;
+  margin-left: auto !important; /* Pushes tools to the far left */
+}
+
+html[dir="rtl"] .VPNavBarMenuLink,
+html[dir="rtl"] .VPNavBarMenuGroup {
+  margin-inline-start: 4px !important;
+  margin-inline-end: 0 !important;
+}
+
+/* Search bar on the left side */
+html[dir="rtl"] .VPNavBarSearch {
+  order: 2 !important;
+  margin-right: 12px !important;
+  margin-left: 8px !important;
+}
+
+/* Tools (Translations, Dark Mode, GitHub) on the far LEFT */
+html[dir="rtl"] .VPNavBarTranslations {
+  order: 3 !important;
+  margin-left: 6px !important;
+  margin-right: 0 !important;
+}
+
+html[dir="rtl"] .VPNavBarAppearance {
+  order: 4 !important;
+  margin-left: 6px !important;
+  margin-right: 0 !important;
+}
+
+html[dir="rtl"] .VPNavBarSocialLinks {
+  order: 5 !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+html[dir="rtl"] .VPFlyout .menu {
+  right: 0 !important;
+  left: auto !important;
+  text-align: right !important;
+  transform-origin: top right !important;
+}
+
+/* 2. RTL SIDEBAR */
+html[dir="rtl"] .VPSidebar {
+  right: 0 !important;
+  left: auto !important;
+  border-left: 1px solid var(--glass-card-border) !important;
+  border-right: none !important;
+}
+
+@media (min-width: 960px) {
+  html[dir="rtl"] .VPContent.has-sidebar {
+    padding-right: var(--vp-sidebar-width) !important;
+    padding-left: 0 !important;
+  }
+}
+
+html[dir="rtl"] .VPSidebarItem .text {
+  text-align: right !important;
+}
+
+html[dir="rtl"] .VPSidebarItem.level-0 > .item {
+  padding-inline-start: 16px !important;
+  padding-inline-end: 0 !important;
+}
+
+html[dir="rtl"] .VPSidebarItem.level-1 > .item {
+  padding-inline-start: 26px !important;
+  padding-inline-end: 0 !important;
+}
+
+html[dir="rtl"] .VPSidebarItem.level-2 > .item {
+  padding-inline-start: 38px !important;
+  padding-inline-end: 0 !important;
+}
+
+html[dir="rtl"] .VPSidebarItem .caret {
+  transform: rotate(180deg) !important;
+  margin-inline-end: 0 !important;
+  margin-inline-start: 6px !important;
+}
+
+html[dir="rtl"] .VPSidebarItem.open > .item .caret {
+  transform: rotate(90deg) !important;
+}
+
+/* 3. RTL DOCUMENT CONTENT & ASIDE */
+html[dir="rtl"] .VPDoc .content-container {
+  margin: 0 auto !important;
+  padding: 0 32px !important;
+}
+
+@media (min-width: 1280px) {
+  html[dir="rtl"] .VPDoc.has-aside .content-container {
+    padding-left: var(--vp-aside-width) !important;
+    padding-right: 32px !important;
+  }
+
+  html[dir="rtl"] .VPDoc .aside-container {
+    left: calc((100vw - var(--vp-layout-max-width)) / 2) !important;
+    right: auto !important;
+  }
+}
+
+/* 4. TYPOGRAPHY */
+html[dir="rtl"] .vp-doc h1,
+html[dir="rtl"] .vp-doc h2,
+html[dir="rtl"] .vp-doc h3,
+html[dir="rtl"] .vp-doc h4,
+html[dir="rtl"] .vp-doc h5,
+html[dir="rtl"] .vp-doc p,
+html[dir="rtl"] .vp-doc span {
+  text-align: right;
+}
+
+html[dir="rtl"] .vp-doc ul,
+html[dir="rtl"] .vp-doc ol {
+  padding-inline-start: 1.8rem !important;
+  padding-inline-end: 0 !important;
+}
+
+html[dir="rtl"] .vp-doc li {
+  text-align: right !important;
+}
+
+html[dir="rtl"] .vp-doc blockquote {
+  border-inline-start: 4px solid #38bdf8 !important;
+  border-inline-end: none !important;
+  padding-inline-start: 18px !important;
+  padding-inline-end: 0 !important;
+  border-radius: 0 12px 12px 0 !important;
+}
+
+html[dir="rtl"] .custom-block {
+  border-inline-start: 4px solid var(--vp-c-brand-1) !important;
+  border-inline-end: none !important;
+  padding-inline-start: 18px !important;
+  padding-inline-end: 16px !important;
+  border-radius: 0 12px 12px 0 !important;
+}
+
+/* 5. CODE BLOCKS (ALWAYS LTR) */
+html[dir="rtl"] .vp-doc div[class*='language-'],
+html[dir="rtl"] .vp-doc pre,
+html[dir="rtl"] .vp-doc code[class*='language-'] {
+  direction: ltr !important;
+  text-align: left !important;
+  unicode-bidi: isolate !important;
+  font-family: var(--vp-font-family-mono) !important;
+}
+
+html[dir="rtl"] .vp-doc code:not([class*='language-']) {
+  direction: ltr !important;
+  display: inline-block;
+  font-family: var(--vp-font-family-mono) !important;
+}
+
+/* 6. TABLES IN RTL */
+html[dir="rtl"] .vp-doc table th,
+html[dir="rtl"] .vp-doc table td {
+  text-align: right !important;
+}
+
+/* 7. FOOTER PAGER LINKS */
+html[dir="rtl"] .VPDocFooter .pager-link.prev {
+  text-align: right !important;
+}
+
+html[dir="rtl"] .VPDocFooter .pager-link.next {
+  text-align: left !important;
+}

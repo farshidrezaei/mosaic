@@ -21,6 +21,13 @@ Thumbs.db
 *~
 .vscode/
 
+# Node & VitePress
+node_modules/
+.vitepress/dist/
+.vitepress/cache/
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+
 # Codex / Agent tools
 .codex
 .codegraph/
@@ -29,4 +36,3 @@ Thumbs.db
 /mosaic
 /mosaic.exe
 dist/
-

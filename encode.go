@@ -27,27 +27,80 @@ import (
 
 	"github.com/farshidrezaei/mosaic/config"
 	"github.com/farshidrezaei/mosaic/encoder"
+	"github.com/farshidrezaei/mosaic/encryption"
 	"github.com/farshidrezaei/mosaic/internal/executor"
 	"github.com/farshidrezaei/mosaic/ladder"
 	"github.com/farshidrezaei/mosaic/optimize"
 	"github.com/farshidrezaei/mosaic/probe"
+	"github.com/farshidrezaei/mosaic/storage"
+	"github.com/farshidrezaei/mosaic/subtitles"
+	"github.com/farshidrezaei/mosaic/thumbnail"
+	"github.com/farshidrezaei/mosaic/watermark"
 )
 
 // Usage represents resource consumption metrics captured during an encoding run.
 type Usage = executor.Usage
+
+// ThumbnailConfig specifies thumbnail sprite generation parameters.
+type ThumbnailConfig = thumbnail.Config
+
+// SubtitleTrack defines a subtitle track to be packaged alongside HLS or DASH streams.
+type SubtitleTrack = subtitles.Track
+
+// WatermarkConfig specifies watermark overlay parameters.
+type WatermarkConfig = watermark.Config
+
+// EncryptionConfig defines the HLS AES-128 encryption configuration.
+type EncryptionConfig = encryption.Config
+
+// S3Config defines the cloud storage connection and upload parameters.
+type S3Config = storage.S3Config
+
+// VideoCodec represents a video compression format.
+type VideoCodec = config.VideoCodec
+
+const (
+	// CodecH264 uses H.264 / AVC codec (default).
+	CodecH264 = config.CodecH264
+	// CodecHEVC uses H.265 / HEVC codec.
+	CodecHEVC = config.CodecHEVC
+	// CodecAV1 uses AV1 next-generation open codec.
+	CodecAV1 = config.CodecAV1
+)
+
+// WatermarkPosition defines the placement of a watermark overlay.
+type WatermarkPosition = watermark.Position
+
+const (
+	PositionTopRight    = watermark.PositionTopRight
+	PositionTopLeft     = watermark.PositionTopLeft
+	PositionBottomRight = watermark.PositionBottomRight
+	PositionBottomLeft  = watermark.PositionBottomLeft
+	PositionCenter      = watermark.PositionCenter
+)
 
 // Option defines a functional option for configuring encoding jobs.
 // It allows for flexible and extensible configuration of the encoding process.
 type Option func(*options)
 
 type options struct {
+	subtitles            []subtitles.Track
 	logger               *slog.Logger
+	watermark            *watermark.Config
+	encryption           *encryption.Config
+	s3Config             *storage.S3Config
 	gpu                  config.GPUType
 	logLevel             string
+	codec                config.VideoCodec
+	thumbnailConfig      thumbnail.Config
 	threads              int
 	bframes              int
+	crf                  int
 	normalizeOrientation bool
 	scaleBitrateWithFPS  bool
+	enableThumbnails     bool
+	enableIFrames        bool
+	normalizeAudio       bool
 }
 
 func defaultOptions() *options {
@@ -144,6 +197,101 @@ func WithLogLevel(level string) Option {
 func WithLogger(logger *slog.Logger) Option {
 	return func(o *options) {
 		o.logger = logger
+	}
+}
+
+// WithThumbnails enables automatic generation of storyboard thumbnail sprites and WebVTT cue file.
+func WithThumbnails(cfg ...ThumbnailConfig) Option {
+	return func(o *options) {
+		o.enableThumbnails = true
+		if len(cfg) > 0 {
+			o.thumbnailConfig = cfg[0]
+		} else {
+			o.thumbnailConfig = thumbnail.DefaultConfig
+		}
+	}
+}
+
+// WithIFrames enables generation of I-frame-only trick-play playlists for HLS.
+func WithIFrames(enabled ...bool) Option {
+	return func(o *options) {
+		if len(enabled) == 0 {
+			o.enableIFrames = true
+			return
+		}
+		o.enableIFrames = enabled[0]
+	}
+}
+
+// WithNormalizeAudio enables EBU R128 loudness normalization for audio tracks.
+func WithNormalizeAudio(enabled ...bool) Option {
+	return func(o *options) {
+		if len(enabled) == 0 {
+			o.normalizeAudio = true
+			return
+		}
+		o.normalizeAudio = enabled[0]
+	}
+}
+
+// WithSubtitles configures subtitle tracks to be converted and injected into HLS and DASH manifests.
+func WithSubtitles(tracks ...SubtitleTrack) Option {
+	return func(o *options) {
+		o.subtitles = append(o.subtitles, tracks...)
+	}
+}
+
+// WithWatermark enables and configures dynamic logo or watermark overlay on all video renditions.
+func WithWatermark(cfg WatermarkConfig) Option {
+	return func(o *options) {
+		c := cfg
+		c.Normalize()
+		o.watermark = &c
+	}
+}
+
+// WithAES128Encryption enables HLS AES-128 segment encryption.
+func WithAES128Encryption(cfg ...EncryptionConfig) Option {
+	return func(o *options) {
+		if len(cfg) > 0 {
+			c := cfg[0]
+			o.encryption = &c
+		} else {
+			o.encryption = &EncryptionConfig{}
+		}
+	}
+}
+
+// WithCodec sets the target video compression format (h264, hevc, av1).
+func WithCodec(codec VideoCodec) Option {
+	return func(o *options) {
+		o.codec = codec
+	}
+}
+
+// WithHEVC configures video encoding to use H.265 / HEVC.
+func WithHEVC() Option {
+	return WithCodec(CodecHEVC)
+}
+
+// WithAV1 configures video encoding to use AV1 (libsvtav1 / av1_nvenc / av1_vaapi).
+func WithAV1() Option {
+	return WithCodec(CodecAV1)
+}
+
+// WithCRF sets the Constant Rate Factor for capped-CRF content-aware bitrate optimization.
+func WithCRF(crf int) Option {
+	return func(o *options) {
+		o.crf = crf
+	}
+}
+
+// WithS3Upload configures automatic direct upload of generated stream assets to S3/MinIO/R2.
+func WithS3Upload(cfg S3Config) Option {
+	return func(o *options) {
+		c := cfg
+		c.Normalize()
+		o.s3Config = &c
 	}
 }
 
@@ -246,8 +394,18 @@ func EncodeHlsWithExecutor(ctx context.Context, job Job, exec executor.CommandEx
 	if err != nil {
 		return nil, err
 	}
+
+	var keyInfoFile string
+	if o.encryption != nil {
+		var keyErr error
+		keyInfoFile, keyErr = encryption.SetupKeyInfo(job.OutputDir, *o.encryption)
+		if keyErr != nil {
+			return nil, fmt.Errorf("setup encryption keyinfo: %w", keyErr)
+		}
+	}
+
 	// 2. Encode
-	return encoder.EncodeHLSCMAFWithExecutor(
+	usage, err := encoder.EncodeHLSCMAFWithExecutor(
 		ctx,
 		effectiveInput,
 		job.OutputDir,
@@ -257,11 +415,40 @@ func EncodeHlsWithExecutor(ctx context.Context, job Job, exec executor.CommandEx
 		exec,
 		buildProgressCallback(job.ProgressHandler, info.Duration),
 		encoder.EncoderOptions{
-			Threads:  o.threads,
-			GPU:      o.gpu,
-			LogLevel: o.logLevel,
+			Threads:        o.threads,
+			GPU:            o.gpu,
+			Codec:          o.codec,
+			CRF:            o.crf,
+			LogLevel:       o.logLevel,
+			EnableIFrames:  o.enableIFrames,
+			NormalizeAudio: o.normalizeAudio,
+			Watermark:      o.watermark,
+			KeyInfoFile:    keyInfoFile,
 		},
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	if o.enableThumbnails {
+		if err := thumbnail.GenerateWithExecutor(ctx, effectiveInput, job.OutputDir, info.Duration, o.thumbnailConfig, exec); err != nil {
+			return usage, fmt.Errorf("generate thumbnails: %w", err)
+		}
+	}
+
+	if len(o.subtitles) > 0 {
+		if err := subtitles.ProcessTracks(ctx, o.subtitles, job.OutputDir, info.Duration); err != nil {
+			return usage, fmt.Errorf("process subtitles: %w", err)
+		}
+	}
+
+	if o.s3Config != nil {
+		if err := storage.UploadDirectory(ctx, job.OutputDir, *o.s3Config, nil); err != nil {
+			return usage, fmt.Errorf("upload to S3: %w", err)
+		}
+	}
+
+	return usage, nil
 }
 
 // EncodeDash encodes the given job into DASH format with CMAF segments.
@@ -297,7 +484,7 @@ func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandE
 		return nil, err
 	}
 	// 2. Encode
-	return encoder.EncodeDASHCMAFWithExecutor(
+	usage, err := encoder.EncodeDASHCMAFWithExecutor(
 		ctx,
 		effectiveInput,
 		job.OutputDir,
@@ -307,11 +494,38 @@ func EncodeDashWithExecutor(ctx context.Context, job Job, exec executor.CommandE
 		exec,
 		buildProgressCallback(job.ProgressHandler, info.Duration),
 		encoder.EncoderOptions{
-			Threads:  o.threads,
-			GPU:      o.gpu,
-			LogLevel: o.logLevel,
+			Threads:        o.threads,
+			GPU:            o.gpu,
+			Codec:          o.codec,
+			CRF:            o.crf,
+			LogLevel:       o.logLevel,
+			NormalizeAudio: o.normalizeAudio,
+			Watermark:      o.watermark,
 		},
 	)
+	if err != nil {
+		return nil, err
+	}
+
+	if o.enableThumbnails {
+		if err := thumbnail.GenerateWithExecutor(ctx, effectiveInput, job.OutputDir, info.Duration, o.thumbnailConfig, exec); err != nil {
+			return usage, fmt.Errorf("generate thumbnails: %w", err)
+		}
+	}
+
+	if len(o.subtitles) > 0 {
+		if err := subtitles.ProcessTracks(ctx, o.subtitles, job.OutputDir, info.Duration); err != nil {
+			return usage, fmt.Errorf("process subtitles: %w", err)
+		}
+	}
+
+	if o.s3Config != nil {
+		if err := storage.UploadDirectory(ctx, job.OutputDir, *o.s3Config, nil); err != nil {
+			return usage, fmt.Errorf("upload to S3: %w", err)
+		}
+	}
+
+	return usage, nil
 }
 
 func prepareInputForEncoding(

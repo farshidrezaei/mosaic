@@ -42,7 +42,7 @@ func EncodeDASHCMAFWithExecutor(
 		return nil, err
 	}
 
-	filter := buildFilterGraph(l)
+	filter := buildFilterGraph(l, info, opts.Watermark)
 	gop := calcGOP(info.FPS, profile.SegmentDuration)
 
 	args := []string{
@@ -56,6 +56,10 @@ func EncodeDASHCMAFWithExecutor(
 		"-i", input,
 	}
 
+	if opts.Watermark != nil && opts.Watermark.Path != "" {
+		args = append(args, "-i", opts.Watermark.Path)
+	}
+
 	if opts.Threads > 0 {
 		args = append(args, "-threads", strconv.Itoa(opts.Threads))
 	}
@@ -63,29 +67,31 @@ func EncodeDASHCMAFWithExecutor(
 	args = append(args, "-filter_complex", filter)
 
 	// ---------- VIDEO ----------
+	encoderName := ResolveVideoEncoder(opts.Codec, opts.GPU)
 	for i, r := range l {
-		codec := "libx264"
-		switch opts.GPU {
-		case config.GPU_NVENC:
-			codec = "h264_nvenc"
-		case config.GPU_VAAPI:
-			codec = "h264_vaapi"
-		case config.GPU_VIDEOTOOLBOX:
-			codec = "h264_videotoolbox"
-		}
-
 		args = append(args,
 			"-map", fmt.Sprintf("[v%do]", i),
 
-			fmt.Sprintf("-c:v:%d", i), codec,
-			fmt.Sprintf("-profile:v:%d", i), r.Profile,
-			fmt.Sprintf("-level:v:%d", i), r.Level,
-
+			fmt.Sprintf("-c:v:%d", i), encoderName,
 			"-pix_fmt", "yuv420p",
 		)
 
-		if codec == "libx264" {
-			args = append(args, "-preset", "medium")
+		if opts.Codec == "" || opts.Codec == config.CodecH264 {
+			args = append(args,
+				fmt.Sprintf("-profile:v:%d", i), r.Profile,
+				fmt.Sprintf("-level:v:%d", i), r.Level,
+			)
+			if encoderName == "libx264" {
+				args = append(args, "-preset", "medium")
+			}
+		} else if opts.Codec == config.CodecAV1 && encoderName == "libsvtav1" {
+			args = append(args, "-preset", "8")
+		} else if opts.Codec == config.CodecHEVC && encoderName == "libx265" {
+			args = append(args, "-x265-params", "no-info=1")
+		}
+
+		if opts.CRF > 0 {
+			args = append(args, fmt.Sprintf("-crf:v:%d", i), strconv.Itoa(opts.CRF))
 		}
 
 		args = append(args,
@@ -109,6 +115,9 @@ func EncodeDASHCMAFWithExecutor(
 				fmt.Sprintf("-b:a:%d", i), "96k",
 				"-ac", "2",
 			)
+			if opts.NormalizeAudio {
+				args = append(args, fmt.Sprintf("-af:a:%d", i), "loudnorm=I=-16:TP=-1.5:LRA=11")
+			}
 		}
 	}
 

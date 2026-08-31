@@ -5,8 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/farshidrezaei/mosaic/config"
@@ -779,5 +782,362 @@ func TestNormalizedInputExt(t *testing.T) {
 		if got != tt.expected {
 			t.Errorf("normalizedInputExt(%q) = %q, want %q", tt.input, got, tt.expected)
 		}
+	}
+}
+
+func TestWithThumbnails(t *testing.T) {
+	mock := executor.NewMockExecutor()
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte(`{"streams":[{"width":1920,"height":1080,"avg_frame_rate":"30/1","duration":"30.0"}],"format":{"duration":"30.0"}}`),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte("0"),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffmpeg", executor.MockResponse{
+		Output: []byte(""),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffmpeg", executor.MockResponse{
+		Output: []byte(""),
+		Err:    nil,
+	})
+
+	tmpDir := t.TempDir()
+	job := Job{
+		Input:     "test.mp4",
+		OutputDir: tmpDir,
+		Profile:   ProfileVOD,
+	}
+
+	_, err := EncodeHlsWithExecutor(context.Background(), job, mock, WithThumbnails())
+	if err != nil {
+		t.Fatalf("EncodeHlsWithExecutor with thumbnails failed: %v", err)
+	}
+
+	vttFile := filepath.Join(tmpDir, "thumbnails.vtt")
+	if _, err := os.Stat(vttFile); os.IsNotExist(err) {
+		t.Errorf("expected thumbnails.vtt to be created, but it was not found")
+	}
+}
+
+func TestWithIFrames(t *testing.T) {
+	mock := executor.NewMockExecutor()
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte(`{"streams":[{"width":1920,"height":1080,"avg_frame_rate":"30/1","duration":"30.0"}],"format":{"duration":"30.0"}}`),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte("0"),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffmpeg", executor.MockResponse{
+		Output: []byte(""),
+		Err:    nil,
+	})
+
+	tmpDir := t.TempDir()
+	job := Job{
+		Input:     "test.mp4",
+		OutputDir: tmpDir,
+		Profile:   ProfileVOD,
+	}
+
+	_, err := EncodeHlsWithExecutor(context.Background(), job, mock, WithIFrames())
+	if err != nil {
+		t.Fatalf("EncodeHlsWithExecutor with iframes failed: %v", err)
+	}
+
+	foundIframeFlag := false
+	for _, call := range mock.CallLog {
+		if call.Name == "ffmpeg" {
+			for _, arg := range call.Args {
+				if strings.Contains(arg, "iframes_only") {
+					foundIframeFlag = true
+					break
+				}
+			}
+		}
+	}
+
+	if !foundIframeFlag {
+		t.Errorf("expected iframes_only flag in ffmpeg args")
+	}
+}
+
+func TestWithNormalizeAudio(t *testing.T) {
+	mock := executor.NewMockExecutor()
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte(`{"streams":[{"width":1920,"height":1080,"avg_frame_rate":"30/1","duration":"30.0"}],"format":{"duration":"30.0"}}`),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte("1"),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffmpeg", executor.MockResponse{
+		Output: []byte(""),
+		Err:    nil,
+	})
+
+	tmpDir := t.TempDir()
+	job := Job{
+		Input:     "test.mp4",
+		OutputDir: tmpDir,
+		Profile:   ProfileVOD,
+	}
+
+	_, err := EncodeHlsWithExecutor(context.Background(), job, mock, WithNormalizeAudio())
+	if err != nil {
+		t.Fatalf("EncodeHlsWithExecutor with audio normalization failed: %v", err)
+	}
+
+	foundLoudnorm := false
+	for _, call := range mock.CallLog {
+		if call.Name == "ffmpeg" {
+			for _, arg := range call.Args {
+				if strings.Contains(arg, "loudnorm") {
+					foundLoudnorm = true
+					break
+				}
+			}
+		}
+	}
+
+	if !foundLoudnorm {
+		t.Errorf("expected loudnorm filter in ffmpeg args")
+	}
+}
+
+func TestWithSubtitles(t *testing.T) {
+	mock := executor.NewMockExecutor()
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte(`{"streams":[{"width":1920,"height":1080,"avg_frame_rate":"30/1","duration":"30.0"}],"format":{"duration":"30.0"}}`),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte("0"),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffmpeg", executor.MockResponse{
+		Output: []byte(""),
+		Err:    nil,
+	})
+
+	tmpDir := t.TempDir()
+	subFile := filepath.Join(tmpDir, "sample.srt")
+	_ = os.WriteFile(subFile, []byte("1\n00:00:01,000 --> 00:00:03,000\nTest\n"), 0o644)
+
+	job := Job{
+		Input:     "test.mp4",
+		OutputDir: tmpDir,
+		Profile:   ProfileVOD,
+	}
+
+	_, err := EncodeHlsWithExecutor(context.Background(), job, mock, WithSubtitles(SubtitleTrack{
+		Path:     subFile,
+		Language: "fa",
+		Label:    "فارسی",
+		Default:  true,
+	}))
+	if err != nil {
+		t.Fatalf("EncodeHlsWithExecutor with subtitles failed: %v", err)
+	}
+
+	subM3U8 := filepath.Join(tmpDir, "sub_fa.m3u8")
+	if _, err := os.Stat(subM3U8); os.IsNotExist(err) {
+		t.Errorf("expected sub_fa.m3u8 to be created")
+	}
+}
+
+func TestWithWatermark(t *testing.T) {
+	mock := executor.NewMockExecutor()
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte(`{"streams":[{"width":1920,"height":1080,"avg_frame_rate":"30/1","duration":"30.0"}],"format":{"duration":"30.0"}}`),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte("0"),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffmpeg", executor.MockResponse{
+		Output: []byte(""),
+		Err:    nil,
+	})
+
+	tmpDir := t.TempDir()
+	job := Job{
+		Input:     "test.mp4",
+		OutputDir: tmpDir,
+		Profile:   ProfileVOD,
+	}
+
+	_, err := EncodeHlsWithExecutor(context.Background(), job, mock, WithWatermark(WatermarkConfig{
+		Path:     "logo.png",
+		Position: PositionBottomRight,
+	}))
+	if err != nil {
+		t.Fatalf("EncodeHlsWithExecutor with watermark failed: %v", err)
+	}
+
+	foundOverlay := false
+	for _, call := range mock.CallLog {
+		if call.Name == "ffmpeg" {
+			for _, arg := range call.Args {
+				if strings.Contains(arg, "overlay=") {
+					foundOverlay = true
+					break
+				}
+			}
+		}
+	}
+
+	if !foundOverlay {
+		t.Errorf("expected watermark overlay in ffmpeg args")
+	}
+}
+
+func TestWithAES128Encryption(t *testing.T) {
+	mock := executor.NewMockExecutor()
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte(`{"streams":[{"width":1920,"height":1080,"avg_frame_rate":"30/1","duration":"30.0"}],"format":{"duration":"30.0"}}`),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte("0"),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffmpeg", executor.MockResponse{
+		Output: []byte(""),
+		Err:    nil,
+	})
+
+	tmpDir := t.TempDir()
+	job := Job{
+		Input:     "test.mp4",
+		OutputDir: tmpDir,
+		Profile:   ProfileVOD,
+	}
+
+	_, err := EncodeHlsWithExecutor(context.Background(), job, mock, WithAES128Encryption())
+	if err != nil {
+		t.Fatalf("EncodeHlsWithExecutor with encryption failed: %v", err)
+	}
+
+	foundKeyInfo := false
+	for _, call := range mock.CallLog {
+		if call.Name == "ffmpeg" {
+			for _, arg := range call.Args {
+				if strings.Contains(arg, "enc.keyinfo") {
+					foundKeyInfo = true
+					break
+				}
+			}
+		}
+	}
+
+	if !foundKeyInfo {
+		t.Errorf("expected -hls_key_info_file with enc.keyinfo in ffmpeg args")
+	}
+
+	keyFile := filepath.Join(tmpDir, "enc.key")
+	if _, err := os.Stat(keyFile); os.IsNotExist(err) {
+		t.Errorf("expected enc.key to be created")
+	}
+}
+
+func TestWithCodecAndCRF(t *testing.T) {
+	mock := executor.NewMockExecutor()
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte(`{"streams":[{"width":1920,"height":1080,"avg_frame_rate":"30/1","duration":"30.0"}],"format":{"duration":"30.0"}}`),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte("0"),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffmpeg", executor.MockResponse{
+		Output: []byte(""),
+		Err:    nil,
+	})
+
+	tmpDir := t.TempDir()
+	job := Job{
+		Input:     "test.mp4",
+		OutputDir: tmpDir,
+		Profile:   ProfileVOD,
+	}
+
+	_, err := EncodeHlsWithExecutor(context.Background(), job, mock, WithAV1(), WithCRF(28))
+	if err != nil {
+		t.Fatalf("EncodeHlsWithExecutor with AV1 and CRF failed: %v", err)
+	}
+
+	foundAV1 := false
+	foundCRF := false
+	for _, call := range mock.CallLog {
+		if call.Name == "ffmpeg" {
+			for i, arg := range call.Args {
+				if arg == "libsvtav1" {
+					foundAV1 = true
+				}
+				if arg == "-crf:v:0" && i+1 < len(call.Args) && call.Args[i+1] == "28" {
+					foundCRF = true
+				}
+			}
+		}
+	}
+
+	if !foundAV1 {
+		t.Errorf("expected libsvtav1 encoder in ffmpeg args")
+	}
+	if !foundCRF {
+		t.Errorf("expected -crf:v:0 28 in ffmpeg args")
+	}
+}
+
+func TestWithS3Upload(t *testing.T) {
+	uploadedCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		uploadedCount++
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	mock := executor.NewMockExecutor()
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte(`{"streams":[{"width":1920,"height":1080,"avg_frame_rate":"30/1","duration":"30.0"}],"format":{"duration":"30.0"}}`),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffprobe", executor.MockResponse{
+		Output: []byte("0"),
+		Err:    nil,
+	})
+	mock.AddSequentialResponse("ffmpeg", executor.MockResponse{
+		Output: []byte(""),
+		Err:    nil,
+	})
+
+	tmpDir := t.TempDir()
+	// create dummy segment to upload
+	_ = os.WriteFile(filepath.Join(tmpDir, "master.m3u8"), []byte("#EXTM3U"), 0o644)
+
+	job := Job{
+		Input:     "test.mp4",
+		OutputDir: tmpDir,
+		Profile:   ProfileVOD,
+	}
+
+	_, err := EncodeHlsWithExecutor(context.Background(), job, mock, WithS3Upload(S3Config{
+		Bucket:   "test-bucket",
+		Endpoint: server.URL,
+	}))
+	if err != nil {
+		t.Fatalf("EncodeHlsWithExecutor with S3 upload failed: %v", err)
+	}
+
+	if uploadedCount == 0 {
+		t.Errorf("expected S3 upload requests to be made to mock server")
 	}
 }
