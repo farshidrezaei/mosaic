@@ -19,6 +19,7 @@ type orientationProbeResponse struct {
 
 type orientationProbeStream struct {
 	CodecName    string                     `json:"codec_name"`
+	CodecType    string                     `json:"codec_type"`
 	Tags         map[string]string          `json:"tags"`
 	SideDataList []orientationProbeSideData `json:"side_data_list"`
 	Width        int                        `json:"width"`
@@ -30,10 +31,11 @@ type orientationProbeSideData struct {
 }
 
 type orientationMetadata struct {
-	CodecName string
-	Width     int
-	Height    int
-	Rotation  int
+	CodecName      string
+	AudioCodecName string
+	Width          int
+	Height         int
+	Rotation       int
 }
 
 // NormalizeVideoOrientation normalizes source orientation by physically rotating
@@ -67,7 +69,14 @@ func normalizeRotationWithExecutor(
 		}
 		defer cleanup()
 
-		args := buildRemuxFFmpegArgs(inputPath, tmpOutput)
+		videoCodec, audioCodec := "copy", "copy"
+		if !outputAcceptsCodec(outputPath, meta.CodecName, mp4CopyVideoCodecs) {
+			videoCodec = "libx264"
+		}
+		if !outputAcceptsCodec(outputPath, meta.AudioCodecName, mp4CopyAudioCodecs) {
+			audioCodec = "aac"
+		}
+		args := buildRemuxFFmpegArgs(inputPath, tmpOutput, videoCodec, audioCodec)
 		if _, _, execErr := exec.Execute(ctx, "ffmpeg", args...); execErr != nil {
 			return fmt.Errorf("normalize orientation: ffmpeg remux failed: %w", execErr)
 		}
@@ -83,11 +92,18 @@ func normalizeRotationWithExecutor(
 	}
 	defer cleanup()
 
-	enc := preferredVideoEncoder(meta.CodecName)
-	args := buildRotateFFmpegArgs(inputPath, tmpOutput, enc, filter)
+	enc := "libx264"
+	if outputAcceptsCodec(outputPath, meta.CodecName, mp4CopyVideoCodecs) {
+		enc = preferredVideoEncoder(meta.CodecName)
+	}
+	audioCodec := "copy"
+	if !outputAcceptsCodec(outputPath, meta.AudioCodecName, mp4CopyAudioCodecs) {
+		audioCodec = "aac"
+	}
+	args := buildRotateFFmpegArgs(inputPath, tmpOutput, enc, filter, audioCodec)
 	_, _, err = exec.Execute(ctx, "ffmpeg", args...)
 	if err != nil && enc != "libx264" {
-		args = buildRotateFFmpegArgs(inputPath, tmpOutput, "libx264", filter)
+		args = buildRotateFFmpegArgs(inputPath, tmpOutput, "libx264", filter, audioCodec)
 		_, _, err = exec.Execute(ctx, "ffmpeg", args...)
 	}
 	if err != nil {
@@ -115,8 +131,7 @@ func probeOrientationMetadata(
 ) (orientationMetadata, error) {
 	args := []string{
 		"-v", "error",
-		"-select_streams", "v:0",
-		"-show_entries", "stream=width,height,codec_name:stream_tags=rotate:stream_side_data=rotation",
+		"-show_entries", "stream=codec_type,width,height,codec_name:stream_tags=rotate:stream_side_data=rotation",
 		"-of", "json",
 		inputPath,
 	}
@@ -132,16 +147,31 @@ func parseOrientationProbeOutput(data []byte) (orientationMetadata, error) {
 	if err := json.Unmarshal(data, &resp); err != nil {
 		return orientationMetadata{}, fmt.Errorf("parse ffprobe json: %w", err)
 	}
-	if len(resp.Streams) == 0 {
+	var video *orientationProbeStream
+	audioCodec := ""
+	for i := range resp.Streams {
+		s := &resp.Streams[i]
+		switch s.CodecType {
+		case "video", "":
+			if video == nil {
+				video = s
+			}
+		case "audio":
+			if audioCodec == "" {
+				audioCodec = s.CodecName
+			}
+		}
+	}
+	if video == nil {
 		return orientationMetadata{}, fmt.Errorf("no video stream found")
 	}
 
-	s := resp.Streams[0]
 	return orientationMetadata{
-		Width:     s.Width,
-		Height:    s.Height,
-		CodecName: s.CodecName,
-		Rotation:  detectOrientationRotation(s),
+		Width:          video.Width,
+		Height:         video.Height,
+		CodecName:      video.CodecName,
+		AudioCodecName: audioCodec,
+		Rotation:       detectOrientationRotation(*video),
 	}, nil
 }
 
@@ -203,6 +233,35 @@ func rotationFilter(rotation int) (string, bool) {
 	}
 }
 
+// mp4CopyVideoCodecs and mp4CopyAudioCodecs list the codecs the MP4 muxer
+// accepts with stream copy. Other codecs (vp8, theora, msmpeg4, wmv, vorbis, ...)
+// are transcoded to H.264/AAC when the normalized output is an MP4 file.
+var (
+	mp4CopyVideoCodecs = map[string]bool{
+		"h264": true, "hevc": true, "av1": true, "vp9": true,
+		"mpeg4": true, "mpeg1video": true, "mpeg2video": true, "mjpeg": true,
+	}
+	mp4CopyAudioCodecs = map[string]bool{
+		"aac": true, "mp3": true, "ac3": true, "eac3": true, "alac": true, "opus": true,
+	}
+)
+
+// outputAcceptsCodec reports whether codecName can be stream-copied into
+// outputPath. Only MP4 outputs are checked; other containers mirror the input
+// container, so their codecs are kept as before.
+func outputAcceptsCodec(outputPath, codecName string, mp4Codecs map[string]bool) bool {
+	codec := strings.ToLower(strings.TrimSpace(codecName))
+	if codec == "" {
+		return true
+	}
+	switch strings.ToLower(filepath.Ext(outputPath)) {
+	case ".mp4", ".m4v":
+		return mp4Codecs[codec]
+	default:
+		return true
+	}
+}
+
 func preferredVideoEncoder(codecName string) string {
 	switch strings.ToLower(strings.TrimSpace(codecName)) {
 	case "h264":
@@ -222,7 +281,7 @@ func preferredVideoEncoder(codecName string) string {
 	}
 }
 
-func buildRotateFFmpegArgs(inputPath, outputPath, encoderName, filter string) []string {
+func buildRotateFFmpegArgs(inputPath, outputPath, encoderName, filter, audioCodec string) []string {
 	return []string{
 		"-y",
 		"-v", "error",
@@ -236,14 +295,16 @@ func buildRotateFFmpegArgs(inputPath, outputPath, encoderName, filter string) []
 		"-map_chapters", "-1",
 		"-vf", filter,
 		"-c:v", encoderName,
-		"-c:a", "copy",
+		"-c:a", audioCodec,
 		"-metadata:s:v:0", "rotate=0",
 		outputPath,
 	}
 }
 
-func buildRemuxFFmpegArgs(inputPath, outputPath string) []string {
-	return []string{
+// buildRemuxFFmpegArgs stream-copies when videoCodec/audioCodec are "copy" and
+// transcodes otherwise.
+func buildRemuxFFmpegArgs(inputPath, outputPath, videoCodec, audioCodec string) []string {
+	args := []string{
 		"-y",
 		"-v", "error",
 		"-display_rotation:v:0", "0",
@@ -253,10 +314,16 @@ func buildRemuxFFmpegArgs(inputPath, outputPath string) []string {
 		"-dn",
 		"-sn",
 		"-map_chapters", "-1",
-		"-c", "copy",
+		"-c:v", videoCodec,
+	}
+	if videoCodec != "copy" {
+		args = append(args, "-pix_fmt", "yuv420p")
+	}
+	return append(args,
+		"-c:a", audioCodec,
 		"-metadata:s:v:0", "rotate=0",
 		outputPath,
-	}
+	)
 }
 
 func prepareTempOutput(outputPath string) (string, func(), error) {
