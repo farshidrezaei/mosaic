@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here.
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed `WithNormalizeOrientation()` failing with `Could not find tag for codec ... not currently supported in container` when the normalized `.mp4` intermediate received codecs MP4 cannot hold (VP8, Theora, MS-MPEG4/WMV video; Vorbis, WMA audio). Such streams are now transcoded to H.264 (`yuv420p`) / AAC in both the remux and rotate paths; MP4-compatible streams are still copied.
+
 ## [v1.8.0] - 2026-08-31
 
 ### Added

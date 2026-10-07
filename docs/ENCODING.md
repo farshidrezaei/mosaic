@@ -18,6 +18,15 @@ Mosaic queries FFprobe to inspect input stream metadata:
 
 Mobile and modern smartphone cameras often record rotated frames (e.g., stored `1920x1080` with `-90°` rotation). Mosaic computes all ladders from **true display dimensions** (`1080x1920`), ensuring correct portrait/landscape resolution tiers without distortion.
 
+### Orientation Normalization Codecs
+
+With `WithNormalizeOrientation()`, the normalized intermediate keeps the source container extension when it is known (`.mp4`, `.mov`, `.mkv`, `.webm`, `.avi`, `.ts`, `.m4v`) and falls back to `.mp4` otherwise (for example `.ogv`, `.wmv`, or URLs without an extension). For `.mp4`/`.m4v` intermediates, streams are copied only when MP4 can hold them:
+
+- Video copied: `h264`, `hevc`, `av1`, `vp9`, `mpeg4`, `mpeg1video`, `mpeg2video`, `mjpeg`. Anything else (e.g. `vp8`, `theora`, `msmpeg4v3`, `wmv2`) is transcoded with `libx264 -pix_fmt yuv420p`.
+- Audio copied: `aac`, `mp3`, `ac3`, `eac3`, `alac`, `opus`. Anything else (e.g. `vorbis`, `wmav2`) is transcoded to `aac`.
+
+The same rules pick the video encoder and audio codec when frames are physically rotated.
+
 ---
 
 ## 2. Aspect-Preserving Ladder Generation
